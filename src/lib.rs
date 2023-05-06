@@ -1,5 +1,5 @@
 use ::rand::{thread_rng, Rng};
-use body::{Body, Drawable, Movable, Position};
+use body::{Body, BodyType, Drawable, Movable, Position};
 use macroquad::prelude::*;
 use math::Vec2f;
 
@@ -21,12 +21,18 @@ impl From<macroquad::file::FileError> for GameError {
 pub const SHAPE_BORDER_WIDTH: f32 = 0.2; // [m]
 
 const PLAYER_SPEED: f32 = 10.0; // [m/s]
-const COLORS: [Color; 22] = [
+const COLORS: [Color; 20] = [
     BEIGE, BLUE, BROWN, DARKBLUE, DARKBROWN, DARKGRAY, DARKGREEN, DARKPURPLE, GOLD, GRAY, GREEN,
-    LIGHTGRAY, LIME, MAGENTA, MAROON, ORANGE, PINK, PURPLE, RED, SKYBLUE, VIOLET, YELLOW,
+    LIGHTGRAY, LIME, MAGENTA, MAROON, PINK, PURPLE, SKYBLUE, VIOLET, YELLOW,
 ];
 const SPAWN_SIZE: (f32, f32) = (70.0, 40.0);
 const OBJECT_RADIUS: f32 = 1.0; // [m]
+
+const MIN_BODY_SIZE: f32 = 0.01 * 0.01; // [m^2]
+const MAX_BODY_SIZE: f32 = 64.0 * 64.0; // [m^2]
+
+const MIN_DENSITY: f32 = 0.2; // [g/cm^3]
+const MAX_DENSITY: f32 = 21.4; // [g/cm^3] (density of platinum)
 
 fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
     let mut rng = thread_rng();
@@ -36,36 +42,44 @@ fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
                 rng.gen_range(-SPAWN_SIZE.0 / 2.0..=SPAWN_SIZE.0 / 2.0),
                 rng.gen_range(-SPAWN_SIZE.1 / 2.0..=SPAWN_SIZE.1 / 2.0),
             );
-            if (player.position() - pos).norm() < 2.0 * OBJECT_RADIUS {
+            if (player.position() - pos).norm() < 4.0 * OBJECT_RADIUS {
                 continue;
             }
 
             if objects
                 .iter()
-                .all(|obj| (obj.position() - pos).norm() > 2.0 * OBJECT_RADIUS)
+                .all(|obj| (obj.position() - pos).norm() > 3.0 * OBJECT_RADIUS)
             {
                 break pos;
             }
         };
 
-        objects.push(Body::new_dynamic_circle(
-            pos,
-            OBJECT_RADIUS,
-            color,
-            Some(WHITE),
-            Vec2f::zeros(),
-        ));
+        objects.push(
+            Body::new_circle(
+                pos,
+                OBJECT_RADIUS,
+                color,
+                Some(WHITE),
+                1.0,
+                0.0,
+                BodyType::Dynamic,
+            )
+            .unwrap(),
+        );
     }
 }
 
 pub async fn entry_point() -> GameResult {
-    let mut player = Body::new_dynamic_circle(
+    let mut player = Body::new_circle(
         Vec2f::new(0.0, 0.0),
         OBJECT_RADIUS,
-        RED,
+        ORANGE,
         Some(WHITE),
-        Vec2f::zeros(),
-    );
+        1.0,
+        0.0,
+        BodyType::Dynamic,
+    )
+    .unwrap();
 
     let mut objects: Vec<Body> = Vec::new();
     spawn_shapes(&mut objects, &player);
