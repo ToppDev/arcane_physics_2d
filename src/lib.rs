@@ -75,6 +75,38 @@ pub async fn entry_point() -> GameResult {
     let mut objects: Vec<Body> = Vec::new();
     spawn_shapes(&mut objects, &player);
 
+    objects.push(
+        Body::new_static_polygon(
+            &[
+                Vec2f::new(15.0, 2.0),
+                Vec2f::new(15.0, 10.0),
+                Vec2f::new(10.0, 10.0),
+                Vec2f::new(10.0, 2.0),
+            ],
+            BLUE,
+            Some(WHITE),
+            1.0,
+            0.0,
+        )
+        .unwrap(),
+    );
+    objects.push(
+        Body::new_static_polygon(
+            &[
+                Vec2f::new(15.0, -2.0),
+                Vec2f::new(18.0, -6.0),
+                Vec2f::new(15.0, -10.0),
+                Vec2f::new(10.0, -10.0),
+                Vec2f::new(10.0, -2.0),
+            ],
+            BLUE,
+            Some(WHITE),
+            1.0,
+            0.0,
+        )
+        .unwrap(),
+    );
+
     let mut zoom = 1.0 / 40.0;
     let mut target = (0., 0.);
     let mut last_update = get_time();
@@ -90,12 +122,12 @@ pub async fn entry_point() -> GameResult {
             }
             _ => (),
         }
-        match (is_key_down(KeyCode::W), is_key_down(KeyCode::S)) {
-            (true, false) => target.1 -= 1.0,
-            (false, true) => target.1 += 1.0,
+        match (is_key_down(KeyCode::Up), is_key_down(KeyCode::Down)) {
+            (true, false) => target.1 += 1.0,
+            (false, true) => target.1 -= 1.0,
             _ => (),
         }
-        match (is_key_down(KeyCode::A), is_key_down(KeyCode::D)) {
+        match (is_key_down(KeyCode::Right), is_key_down(KeyCode::Left)) {
             (true, false) => target.0 += 1.0,
             (false, true) => target.0 -= 1.0,
             _ => (),
@@ -108,16 +140,16 @@ pub async fn entry_point() -> GameResult {
 
         // Player movement ########################################################################
         let dir_x = match (
-            is_key_down(KeyCode::L) || is_key_down(KeyCode::Right),
-            is_key_down(KeyCode::H) || is_key_down(KeyCode::Left),
+            is_key_down(KeyCode::L) || is_key_down(KeyCode::D),
+            is_key_down(KeyCode::H) || is_key_down(KeyCode::A),
         ) {
             (true, false) => 1.0,
             (false, true) => -1.0,
             _ => 0.0,
         };
         let dir_y = match (
-            is_key_down(KeyCode::K) || is_key_down(KeyCode::Up),
-            is_key_down(KeyCode::J) || is_key_down(KeyCode::Down),
+            is_key_down(KeyCode::K) || is_key_down(KeyCode::W),
+            is_key_down(KeyCode::J) || is_key_down(KeyCode::S),
         ) {
             (true, false) => 1.0,
             (false, true) => -1.0,
@@ -126,10 +158,12 @@ pub async fn entry_point() -> GameResult {
         let dir = Vec2f::new(dir_x, dir_y)
             .try_normalize(0.1)
             .unwrap_or(Vec2f::zeros());
-        player.offset(PLAYER_SPEED * dt * dir);
-        if let Body::Dynamic(player) = &mut player {
-            *player.linear_velocity_mut() = PLAYER_SPEED * dir * dt;
-        }
+
+        player
+            .as_dynamic_mut()
+            .unwrap()
+            .offset(PLAYER_SPEED * dt * dir);
+        *player.as_dynamic_mut().unwrap().linear_velocity_mut() = PLAYER_SPEED * dir * dt;
 
         // Drawing ################################################################################
         clear_background(BLACK);
