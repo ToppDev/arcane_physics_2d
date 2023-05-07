@@ -1,5 +1,5 @@
 use ::rand::{thread_rng, Rng};
-use body::{Body, BodyType, Drawable, Movable, Position};
+use body::{Body, Drawable, Movable, Position};
 use macroquad::prelude::*;
 use math::Vec2f;
 
@@ -55,31 +55,22 @@ fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
         };
 
         objects.push(
-            Body::new_circle(
-                pos,
-                OBJECT_RADIUS,
-                color,
-                Some(WHITE),
-                1.0,
-                0.0,
-                BodyType::Dynamic,
-            )
-            .unwrap(),
+            Body::new_dynamic_circle(pos, OBJECT_RADIUS, color, Some(WHITE), 1.0, 0.0).unwrap(),
         );
     }
 }
 
 pub async fn entry_point() -> GameResult {
-    let mut player = Body::new_circle(
+    let mut player = Body::new_dynamic_circle(
         Vec2f::new(0.0, 0.0),
         OBJECT_RADIUS,
         ORANGE,
         Some(WHITE),
         1.0,
         0.0,
-        BodyType::Dynamic,
     )
     .unwrap();
+    println!("Size of Body type: {} [byte]", std::mem::size_of::<Body>());
 
     let mut objects: Vec<Body> = Vec::new();
     spawn_shapes(&mut objects, &player);
@@ -100,17 +91,17 @@ pub async fn entry_point() -> GameResult {
             _ => (),
         }
         match (is_key_down(KeyCode::W), is_key_down(KeyCode::S)) {
-            (true, false) => target.1 -= 10.0,
-            (false, true) => target.1 += 10.0,
+            (true, false) => target.1 -= 1.0,
+            (false, true) => target.1 += 1.0,
             _ => (),
         }
         match (is_key_down(KeyCode::A), is_key_down(KeyCode::D)) {
-            (true, false) => target.0 += 10.0,
-            (false, true) => target.0 -= 10.0,
+            (true, false) => target.0 += 1.0,
+            (false, true) => target.0 -= 1.0,
             _ => (),
         }
         set_camera(&Camera2D {
-            target: vec2(target.0, target.1),
+            target: vec2(target.0, target.1) * 0.01 / zoom,
             zoom: macroquad::prelude::vec2(zoom, zoom * screen_width() / screen_height()),
             ..Default::default()
         });

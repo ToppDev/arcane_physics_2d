@@ -51,22 +51,15 @@ impl Movable for Circle {
 
 impl Drawable for Circle {
     fn draw(&self) {
-        let radius = self.radius
-            - match self.hitbox_color {
-                Some(_) => SHAPE_BORDER_WIDTH / 2.0,
-                None => 0.0,
-            };
-
-        draw_circle(self.pos.x, self.pos.y, self.radius, self.fill_color);
-
         if let Some(hitbox_color) = self.hitbox_color {
-            draw_circle_lines(
-                self.pos.x,
-                self.pos.y,
-                radius,
-                SHAPE_BORDER_WIDTH,
-                hitbox_color,
-            );
+            draw_circle(self.pos.x, self.pos.y, self.radius, hitbox_color);
         }
+
+        draw_circle(
+            self.pos.x,
+            self.pos.y,
+            self.radius - SHAPE_BORDER_WIDTH,
+            self.fill_color,
+        );
     }
 }
