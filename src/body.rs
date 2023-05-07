@@ -1,5 +1,6 @@
 pub mod body_circle;
 pub mod body_polygon;
+pub mod body_rectangle;
 mod shapes;
 
 use enum_as_inner::EnumAsInner;

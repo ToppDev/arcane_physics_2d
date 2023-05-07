@@ -2,8 +2,9 @@ use crate::{
     body::{Drawable, Movable, Position},
     draw::*,
     math::Vec2f,
-    SHAPE_BORDER_WIDTH,
 };
+
+use super::SHAPE_BORDER_WIDTH;
 
 pub struct Circle {
     pos: Vec2f,

@@ -4,8 +4,9 @@ use crate::{
     body::{Drawable, Movable, Position},
     draw::{draw_triangle, Color},
     math::Vec2f,
-    SHAPE_BORDER_WIDTH,
 };
+
+use super::SHAPE_BORDER_WIDTH;
 
 #[derive(Debug)]
 pub struct Polygon {

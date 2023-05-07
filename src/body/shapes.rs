@@ -10,6 +10,8 @@ pub mod circle;
 pub mod polygon;
 pub mod rectangle;
 
+pub const SHAPE_BORDER_WIDTH: f32 = 0.1; // [m]
+
 #[derive(EnumAsInner)]
 pub enum Shape {
     Circle(Circle),

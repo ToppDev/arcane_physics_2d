@@ -6,6 +6,7 @@ use math::Vec2f;
 mod body;
 mod draw;
 mod math;
+pub mod world;
 
 pub type GameResult = std::result::Result<(), GameError>;
 #[derive(Debug)]
@@ -18,23 +19,16 @@ impl From<macroquad::file::FileError> for GameError {
     }
 }
 
-pub const SHAPE_BORDER_WIDTH: f32 = 0.2; // [m]
-
 const PLAYER_SPEED: f32 = 10.0; // [m/s]
-const COLORS: [Color; 20] = [
-    BEIGE, BLUE, BROWN, DARKBLUE, DARKBROWN, DARKGRAY, DARKGREEN, DARKPURPLE, GOLD, GRAY, GREEN,
-    LIGHTGRAY, LIME, MAGENTA, MAROON, PINK, PURPLE, SKYBLUE, VIOLET, YELLOW,
-];
-const SPAWN_SIZE: (f32, f32) = (70.0, 40.0);
-const OBJECT_RADIUS: f32 = 1.0; // [m]
-
-const MIN_BODY_SIZE: f32 = 0.01 * 0.01; // [m^2]
-const MAX_BODY_SIZE: f32 = 64.0 * 64.0; // [m^2]
-
-const MIN_DENSITY: f32 = 0.2; // [g/cm^3]
-const MAX_DENSITY: f32 = 21.4; // [g/cm^3] (density of platinum)
+const OBJECT_SIZE: f32 = 1.0; // [m]
 
 fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
+    const COLORS: [Color; 20] = [
+        BEIGE, BLUE, BROWN, DARKBLUE, DARKBROWN, DARKGRAY, DARKGREEN, DARKPURPLE, GOLD, GRAY,
+        GREEN, LIGHTGRAY, LIME, MAGENTA, MAROON, PINK, PURPLE, SKYBLUE, VIOLET, YELLOW,
+    ];
+    const SPAWN_SIZE: (f32, f32) = (35.0, 20.0);
+
     let mut rng = thread_rng();
     for color in COLORS {
         let pos = loop {
@@ -42,20 +36,20 @@ fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
                 rng.gen_range(-SPAWN_SIZE.0 / 2.0..=SPAWN_SIZE.0 / 2.0),
                 rng.gen_range(-SPAWN_SIZE.1 / 2.0..=SPAWN_SIZE.1 / 2.0),
             );
-            if (player.position() - pos).norm() < 4.0 * OBJECT_RADIUS {
+            if (player.position() - pos).norm() < 3.0 * OBJECT_SIZE {
                 continue;
             }
 
             if objects
                 .iter()
-                .all(|obj| (obj.position() - pos).norm() > 3.0 * OBJECT_RADIUS)
+                .all(|obj| (obj.position() - pos).norm() > 2.0 * OBJECT_SIZE)
             {
                 break pos;
             }
         };
 
         objects.push(
-            Body::new_dynamic_circle(pos, OBJECT_RADIUS, color, Some(WHITE), 1.0, 0.0).unwrap(),
+            Body::new_dynamic_circle(pos, OBJECT_SIZE / 2.0, color, Some(WHITE), 1.0, 0.0).unwrap(),
         );
     }
 }
@@ -63,51 +57,60 @@ fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
 pub async fn entry_point() -> GameResult {
     let mut player = Body::new_dynamic_circle(
         Vec2f::new(0.0, 0.0),
-        OBJECT_RADIUS,
+        OBJECT_SIZE / 2.0,
         ORANGE,
         Some(WHITE),
         1.0,
         0.0,
     )
     .unwrap();
-    println!("Size of Body type: {} [byte]", std::mem::size_of::<Body>());
 
     let mut objects: Vec<Body> = Vec::new();
+    objects.push(
+        Body::new_dynamic_rectangle(
+            Vec2f::new(3.0, 3.0),
+            OBJECT_SIZE,
+            OBJECT_SIZE * 0.5,
+            10.0,
+            BLUE,
+            Some(WHITE),
+            1.0,
+            0.0,
+        )
+        .unwrap(),
+    );
+    let arrow_position = Vec2f::new(-3.0, -2.0);
+    objects.push(
+        // (10,  -2) _____(10.5, -2)
+        //          |     \
+        //          |      \ (11, -2.5)
+        //          |      /
+        //          |_____/
+        // (10, -3)      (10.5, -3)
+        Body::new_static_polygon(
+            &[
+                Vec2f::new(arrow_position.x, arrow_position.y),
+                Vec2f::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
+                Vec2f::new(
+                    arrow_position.x + OBJECT_SIZE,
+                    arrow_position.y - OBJECT_SIZE / 2.0,
+                ),
+                Vec2f::new(
+                    arrow_position.x + OBJECT_SIZE / 2.0,
+                    arrow_position.y - OBJECT_SIZE,
+                ),
+                Vec2f::new(arrow_position.x, arrow_position.y - OBJECT_SIZE),
+            ],
+            BLUE,
+            Some(WHITE),
+            1.0,
+            0.0,
+        )
+        .unwrap(),
+    );
     spawn_shapes(&mut objects, &player);
 
-    objects.push(
-        Body::new_static_polygon(
-            &[
-                Vec2f::new(15.0, 2.0),
-                Vec2f::new(15.0, 10.0),
-                Vec2f::new(10.0, 10.0),
-                Vec2f::new(10.0, 2.0),
-            ],
-            BLUE,
-            Some(WHITE),
-            1.0,
-            0.0,
-        )
-        .unwrap(),
-    );
-    objects.push(
-        Body::new_static_polygon(
-            &[
-                Vec2f::new(15.0, -2.0),
-                Vec2f::new(18.0, -6.0),
-                Vec2f::new(15.0, -10.0),
-                Vec2f::new(10.0, -10.0),
-                Vec2f::new(10.0, -2.0),
-            ],
-            BLUE,
-            Some(WHITE),
-            1.0,
-            0.0,
-        )
-        .unwrap(),
-    );
-
-    let mut zoom = 1.0 / 40.0;
+    let mut zoom = 1.0 / 20.0;
     let mut target = (0., 0.);
     let mut last_update = get_time();
 

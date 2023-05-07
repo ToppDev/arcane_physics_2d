@@ -32,7 +32,7 @@ dependencies = [
 name = "arcane_physics_2d"
 version = "0.1.0"
 dependencies = [
- "approx",
+ "assert_approx_eq",
  "enum-as-inner",
  "itertools",
  "macroquad",
@@ -40,6 +40,12 @@ dependencies = [
  "pretty_assertions",
  "rand",
 ]
+
+[[package]]
+name = "assert_approx_eq"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c07dab4369547dbe5114677b33fbbf724971019f3818172d59a97a61c774ffd"
 
 [[package]]
 name = "audir-sles"
