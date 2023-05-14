@@ -1,11 +1,25 @@
 use ::rand::{thread_rng, Rng};
-use body::{Body, Drawable, Position, Updatable};
-use macroquad::prelude::*;
+use body::{
+    circle::Circle,
+    components::{Movable, Positionable, Rotatable},
+    polygon::Polygon,
+    Drawable, Dynamic, Updatable,
+};
+use draw::draw_rectangle;
+use macroquad::{
+    color::colors::*,
+    prelude::{is_key_down, set_camera, vec2, Camera2D, Color, KeyCode},
+    time::get_time,
+    window::{clear_background, next_frame, screen_height, screen_width},
+};
 use math::Vec2f;
+
+use crate::body::components::BodyColor;
 
 mod body;
 mod draw;
 mod math;
+mod physics;
 pub mod world;
 
 pub type GameResult = std::result::Result<(), GameError>;
@@ -19,16 +33,20 @@ impl From<macroquad::file::FileError> for GameError {
     }
 }
 
+trait GameObject: Drawable + Positionable + Movable + Rotatable + Updatable {}
+impl<T> GameObject for T where T: Drawable + Positionable + Movable + Rotatable + Updatable {}
+
 const DEBUG_DRAW_SPAWN_AREA: bool = false;
 
 const INITAL_ZOOM: f32 = 1.0 / 30.0;
 const OBJECT_SIZE: f32 = 2.0; // [m]
+const SHAPE_BORDER_WIDTH: f32 = 0.15; // [m]
 const SPAWN_SIZE: (f32, f32) = (50.0, 30.0);
 
 const PLAYER_LINEAR_SPEED: f32 = 10.0; // [m/s]
 const PLAYER_ROTATION_SPEED: f32 = 80.0; // [deg/s]
 
-fn spawn_shapes(objects: &mut Vec<Body>) {
+fn spawn_shapes(objects: &mut Vec<Box<dyn GameObject>>) {
     const COLORS: [Color; 20] = [
         BEIGE, BLUE, BROWN, DARKBLUE, DARKBROWN, DARKGRAY, DARKGREEN, DARKPURPLE, GOLD, GRAY,
         GREEN, LIGHTGRAY, LIME, MAGENTA, MAROON, PINK, PURPLE, SKYBLUE, VIOLET, YELLOW,
@@ -54,41 +72,87 @@ fn spawn_shapes(objects: &mut Vec<Body>) {
             }
         };
 
-        objects.push(if rng.gen_bool(1.0) {
-            Body::new_dynamic_circle(pos, OBJECT_SIZE / 2.0, color, Some(WHITE), 2.0, 0.5).unwrap()
-        } else {
-            Body::new_dynamic_rectangle(
+        objects.push(Box::new(
+            Circle::<Dynamic>::new(
                 pos,
-                OBJECT_SIZE * rng.gen_range(1.0..=1.0),
-                OBJECT_SIZE * rng.gen_range(1.0..=1.0),
-                if rng.gen_bool(1.0) {
-                    0.0
-                } else {
-                    rng.gen_range(0.0..=90.0)
+                OBJECT_SIZE / 2.0,
+                BodyColor {
+                    fill: color,
+                    hitbox: Some(WHITE),
                 },
-                color,
-                Some(WHITE),
                 2.0,
                 0.5,
             )
-            .unwrap()
+            .unwrap(),
+        ));
+        objects.push(if rng.gen_bool(0.7) {
+            Box::new(
+                Circle::<Dynamic>::new(
+                    pos,
+                    OBJECT_SIZE / 2.0,
+                    BodyColor {
+                        fill: color,
+                        hitbox: Some(WHITE),
+                    },
+                    2.0,
+                    0.5,
+                )
+                .unwrap(),
+            )
+        } else {
+            Box::new(
+                Polygon::<Dynamic>::new_rect(
+                    pos,
+                    OBJECT_SIZE * rng.gen_range(1.0..=1.0),
+                    OBJECT_SIZE * rng.gen_range(1.0..=1.0),
+                    if rng.gen_bool(1.0) {
+                        0.0
+                    } else {
+                        rng.gen_range(0.0..=90.0)
+                    },
+                    BodyColor {
+                        fill: color,
+                        hitbox: Some(WHITE),
+                    },
+                    2.0,
+                    0.5,
+                )
+                .unwrap(),
+            )
         });
     }
 }
 
 pub async fn entry_point() -> GameResult {
-    let mut objects: Vec<Body> = Vec::new();
-    objects.push(
-        Body::new_dynamic_circle(
+    let mut objects: Vec<Box<dyn GameObject>> = Vec::new();
+    // objects.push(Box::new(
+    //     Circle::<Dynamic>::new(
+    //         Vec2f::new(0.0, 0.0),
+    //         OBJECT_SIZE / 2.0,
+    //         BodyColor {
+    //             fill: ORANGE,
+    //             hitbox: Some(WHITE),
+    //         },
+    //         2.0,
+    //         0.5,
+    //     )
+    //     .unwrap(),
+    // ));
+    objects.push(Box::new(
+        Polygon::<Dynamic>::new_rect(
             Vec2f::new(0.0, 0.0),
-            OBJECT_SIZE / 2.0,
-            ORANGE,
-            Some(WHITE),
+            OBJECT_SIZE,
+            OBJECT_SIZE,
+            0.0,
+            BodyColor {
+                fill: ORANGE,
+                hitbox: Some(WHITE),
+            },
             2.0,
             0.5,
         )
         .unwrap(),
-    );
+    ));
 
     let arrow_position = Vec2f::new(-6.0, -4.0);
     objects.push(
@@ -98,26 +162,30 @@ pub async fn entry_point() -> GameResult {
         //          |      /
         //          |_____/
         // (10, -3)      (10.5, -3)
-        Body::new_dynamic_polygon(
-            &[
-                Vec2f::new(arrow_position.x, arrow_position.y),
-                Vec2f::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
-                Vec2f::new(
-                    arrow_position.x + OBJECT_SIZE,
-                    arrow_position.y - OBJECT_SIZE / 2.0,
-                ),
-                Vec2f::new(
-                    arrow_position.x + OBJECT_SIZE / 2.0,
-                    arrow_position.y - OBJECT_SIZE,
-                ),
-                Vec2f::new(arrow_position.x, arrow_position.y - OBJECT_SIZE),
-            ],
-            BLUE,
-            Some(WHITE),
-            1.0,
-            0.0,
-        )
-        .unwrap(),
+        Box::new(
+            Polygon::<Dynamic>::new(
+                &[
+                    Vec2f::new(arrow_position.x, arrow_position.y),
+                    Vec2f::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
+                    Vec2f::new(
+                        arrow_position.x + OBJECT_SIZE,
+                        arrow_position.y - OBJECT_SIZE / 2.0,
+                    ),
+                    Vec2f::new(
+                        arrow_position.x + OBJECT_SIZE / 2.0,
+                        arrow_position.y - OBJECT_SIZE,
+                    ),
+                    Vec2f::new(arrow_position.x, arrow_position.y - OBJECT_SIZE),
+                ],
+                BodyColor {
+                    fill: BLUE,
+                    hitbox: Some(WHITE),
+                },
+                1.0,
+                0.0,
+            )
+            .unwrap(),
+        ),
     );
     spawn_shapes(&mut objects);
 
@@ -172,24 +240,15 @@ pub async fn entry_point() -> GameResult {
         let dir = Vec2f::new(dir_x, dir_y)
             .try_normalize(0.1)
             .unwrap_or(Vec2f::zeros());
-        *objects
-            .first_mut()
-            .unwrap()
-            .as_dynamic_mut()
-            .unwrap()
-            .linear_velocity_mut() = PLAYER_LINEAR_SPEED * dir;
+        *objects.first_mut().unwrap().linear_velocity_mut() = PLAYER_LINEAR_SPEED * dir;
 
         let rot_dir = match (is_key_down(KeyCode::Q), is_key_down(KeyCode::E)) {
             (true, false) => 1.0,
             (false, true) => -1.0,
             _ => 0.0,
         };
-        *objects
-            .first_mut()
-            .unwrap()
-            .as_dynamic_mut()
-            .unwrap()
-            .rotation_velocity_mut() = PLAYER_ROTATION_SPEED.to_radians() * rot_dir;
+        *objects.first_mut().unwrap().rotation_velocity_mut() =
+            PLAYER_ROTATION_SPEED.to_radians() * rot_dir;
 
         // Update #################################################################################
         for object in &mut objects {
