@@ -1,5 +1,5 @@
 use ::rand::{thread_rng, Rng};
-use body::{Body, Drawable, Movable, Position};
+use body::{Body, Drawable, Position, Updatable};
 use macroquad::prelude::*;
 use math::Vec2f;
 
@@ -19,15 +19,20 @@ impl From<macroquad::file::FileError> for GameError {
     }
 }
 
-const PLAYER_SPEED: f32 = 10.0; // [m/s]
-const OBJECT_SIZE: f32 = 1.0; // [m]
+const DEBUG_DRAW_SPAWN_AREA: bool = false;
 
-fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
+const INITAL_ZOOM: f32 = 1.0 / 30.0;
+const OBJECT_SIZE: f32 = 2.0; // [m]
+const SPAWN_SIZE: (f32, f32) = (50.0, 30.0);
+
+const PLAYER_LINEAR_SPEED: f32 = 10.0; // [m/s]
+const PLAYER_ROTATION_SPEED: f32 = 80.0; // [deg/s]
+
+fn spawn_shapes(objects: &mut Vec<Body>) {
     const COLORS: [Color; 20] = [
         BEIGE, BLUE, BROWN, DARKBLUE, DARKBROWN, DARKGRAY, DARKGREEN, DARKPURPLE, GOLD, GRAY,
         GREEN, LIGHTGRAY, LIME, MAGENTA, MAROON, PINK, PURPLE, SKYBLUE, VIOLET, YELLOW,
     ];
-    const SPAWN_SIZE: (f32, f32) = (35.0, 20.0);
 
     let mut rng = thread_rng();
     for color in COLORS {
@@ -36,6 +41,7 @@ fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
                 rng.gen_range(-SPAWN_SIZE.0 / 2.0..=SPAWN_SIZE.0 / 2.0),
                 rng.gen_range(-SPAWN_SIZE.1 / 2.0..=SPAWN_SIZE.1 / 2.0),
             );
+            let player = objects.first().unwrap();
             if (player.position() - pos).norm() < 3.0 * OBJECT_SIZE {
                 continue;
             }
@@ -48,38 +54,43 @@ fn spawn_shapes(objects: &mut Vec<Body>, player: &Body) {
             }
         };
 
-        objects.push(
-            Body::new_dynamic_circle(pos, OBJECT_SIZE / 2.0, color, Some(WHITE), 1.0, 0.0).unwrap(),
-        );
+        objects.push(if rng.gen_bool(1.0) {
+            Body::new_dynamic_circle(pos, OBJECT_SIZE / 2.0, color, Some(WHITE), 2.0, 0.5).unwrap()
+        } else {
+            Body::new_dynamic_rectangle(
+                pos,
+                OBJECT_SIZE * rng.gen_range(1.0..=1.0),
+                OBJECT_SIZE * rng.gen_range(1.0..=1.0),
+                if rng.gen_bool(1.0) {
+                    0.0
+                } else {
+                    rng.gen_range(0.0..=90.0)
+                },
+                color,
+                Some(WHITE),
+                2.0,
+                0.5,
+            )
+            .unwrap()
+        });
     }
 }
 
 pub async fn entry_point() -> GameResult {
-    let mut player = Body::new_dynamic_circle(
-        Vec2f::new(0.0, 0.0),
-        OBJECT_SIZE / 2.0,
-        ORANGE,
-        Some(WHITE),
-        1.0,
-        0.0,
-    )
-    .unwrap();
-
     let mut objects: Vec<Body> = Vec::new();
     objects.push(
-        Body::new_dynamic_rectangle(
-            Vec2f::new(3.0, 3.0),
-            OBJECT_SIZE,
-            OBJECT_SIZE * 0.5,
-            10.0,
-            BLUE,
+        Body::new_dynamic_circle(
+            Vec2f::new(0.0, 0.0),
+            OBJECT_SIZE / 2.0,
+            ORANGE,
             Some(WHITE),
-            1.0,
-            0.0,
+            2.0,
+            0.5,
         )
         .unwrap(),
     );
-    let arrow_position = Vec2f::new(-3.0, -2.0);
+
+    let arrow_position = Vec2f::new(-6.0, -4.0);
     objects.push(
         // (10,  -2) _____(10.5, -2)
         //          |     \
@@ -87,7 +98,7 @@ pub async fn entry_point() -> GameResult {
         //          |      /
         //          |_____/
         // (10, -3)      (10.5, -3)
-        Body::new_static_polygon(
+        Body::new_dynamic_polygon(
             &[
                 Vec2f::new(arrow_position.x, arrow_position.y),
                 Vec2f::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
@@ -108,10 +119,10 @@ pub async fn entry_point() -> GameResult {
         )
         .unwrap(),
     );
-    spawn_shapes(&mut objects, &player);
+    spawn_shapes(&mut objects);
 
-    let mut zoom = 1.0 / 20.0;
-    let mut target = (0., 0.);
+    let zoom = INITAL_ZOOM;
+    let target = (0.0, 0.0);
     let mut last_update = get_time();
 
     loop {
@@ -119,22 +130,22 @@ pub async fn entry_point() -> GameResult {
         last_update = get_time();
 
         // Camera movement ########################################################################
-        match mouse_wheel() {
-            (_x, y) if y != 0.0 => {
-                zoom *= 1.1f32.powf(y);
-            }
-            _ => (),
-        }
-        match (is_key_down(KeyCode::Up), is_key_down(KeyCode::Down)) {
-            (true, false) => target.1 += 1.0,
-            (false, true) => target.1 -= 1.0,
-            _ => (),
-        }
-        match (is_key_down(KeyCode::Right), is_key_down(KeyCode::Left)) {
-            (true, false) => target.0 += 1.0,
-            (false, true) => target.0 -= 1.0,
-            _ => (),
-        }
+        // match mouse_wheel() {
+        //     (_x, y) if y != 0.0 => {
+        //         zoom *= 1.1f32.powf(y);
+        //     }
+        //     _ => (),
+        // }
+        // match (is_key_down(KeyCode::Up), is_key_down(KeyCode::Down)) {
+        //     (true, false) => target.1 += 1.0,
+        //     (false, true) => target.1 -= 1.0,
+        //     _ => (),
+        // }
+        // match (is_key_down(KeyCode::Right), is_key_down(KeyCode::Left)) {
+        //     (true, false) => target.0 += 1.0,
+        //     (false, true) => target.0 -= 1.0,
+        //     _ => (),
+        // }
         set_camera(&Camera2D {
             target: vec2(target.0, target.1) * 0.01 / zoom,
             zoom: macroquad::prelude::vec2(zoom, zoom * screen_width() / screen_height()),
@@ -161,23 +172,41 @@ pub async fn entry_point() -> GameResult {
         let dir = Vec2f::new(dir_x, dir_y)
             .try_normalize(0.1)
             .unwrap_or(Vec2f::zeros());
-
-        player
+        *objects
+            .first_mut()
+            .unwrap()
             .as_dynamic_mut()
             .unwrap()
-            .offset(PLAYER_SPEED * dt * dir);
-        *player.as_dynamic_mut().unwrap().linear_velocity_mut() = PLAYER_SPEED * dir * dt;
+            .linear_velocity_mut() = PLAYER_LINEAR_SPEED * dir;
+
+        let rot_dir = match (is_key_down(KeyCode::Q), is_key_down(KeyCode::E)) {
+            (true, false) => 1.0,
+            (false, true) => -1.0,
+            _ => 0.0,
+        };
+        *objects
+            .first_mut()
+            .unwrap()
+            .as_dynamic_mut()
+            .unwrap()
+            .rotation_velocity_mut() = PLAYER_ROTATION_SPEED.to_radians() * rot_dir;
+
+        // Update #################################################################################
+        for object in &mut objects {
+            object.update(dt);
+        }
 
         // Drawing ################################################################################
         clear_background(BLACK);
-        // draw_rectangle(
-        //     -SPAWN_SIZE.0 / 2.0,
-        //     -SPAWN_SIZE.1 / 2.0,
-        //     SPAWN_SIZE.0,
-        //     SPAWN_SIZE.1,
-        //     GRAY,
-        // );
-        player.draw();
+        if DEBUG_DRAW_SPAWN_AREA {
+            draw_rectangle(
+                -SPAWN_SIZE.0 / 2.0,
+                -SPAWN_SIZE.1 / 2.0,
+                SPAWN_SIZE.0,
+                SPAWN_SIZE.1,
+                GRAY,
+            );
+        }
         for object in &objects {
             object.draw();
         }

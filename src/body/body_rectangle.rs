@@ -10,7 +10,7 @@ impl Body {
         center: Vec2f,
         width: f32,
         height: f32,
-        rotation: f32,
+        rotation_deg: f32,
         fill_color: Color,
         hitbox_color: Option<Color>,
         density: f32,
@@ -19,7 +19,7 @@ impl Body {
         let area = width * height;
         let restitution = validate_body_parameters(area, density, restitution)?;
 
-        let points = calc_rect_vertices(center.x, center.y, width, height, rotation);
+        let points = calc_rect_vertices(center.x, center.y, width, height, rotation_deg);
         Ok(Body::Static(StaticBody {
             data: CommonBody {
                 shape: Shape::Polygon(Polygon::new(&points, fill_color, hitbox_color)),
@@ -34,7 +34,7 @@ impl Body {
         center: Vec2f,
         width: f32,
         height: f32,
-        rotation: f32,
+        rotation_deg: f32,
         fill_color: Color,
         hitbox_color: Option<Color>,
         density: f32,
@@ -43,7 +43,7 @@ impl Body {
         let area = width * height;
         let restitution = validate_body_parameters(area, density, restitution)?;
 
-        let points = calc_rect_vertices(center.x, center.y, width, height, rotation);
+        let points = calc_rect_vertices(center.x, center.y, width, height, rotation_deg);
         Ok(Body::Dynamic(DynamicBody {
             data: CommonBody {
                 shape: Shape::Polygon(Polygon::new(&points, fill_color, hitbox_color)),

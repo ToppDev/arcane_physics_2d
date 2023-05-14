@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    body::{Drawable, Movable, Position},
+    body::{Drawable, Movable, Position, Rotatable},
     draw::{draw_triangle, Color},
     math::Vec2f,
 };
@@ -60,6 +60,15 @@ impl Movable for Polygon {
     }
     fn offset(&mut self, offset: Vec2f) {
         self.centroid += offset;
+    }
+}
+
+impl Rotatable for Polygon {
+    fn rotate(&mut self, angle_rad: f32) {
+        let rot = nalgebra::Rotation2::new(angle_rad);
+        for vertex in &mut self.vertices {
+            *vertex = rot * *vertex;
+        }
     }
 }
 

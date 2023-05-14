@@ -1,11 +1,12 @@
 pub mod body_circle;
 pub mod body_polygon;
 pub mod body_rectangle;
+pub mod collision;
 mod shapes;
 
 use enum_as_inner::EnumAsInner;
 
-use self::shapes::Shape;
+use self::{collision::CollisionWith, shapes::Shape};
 use crate::math::Vec2f;
 
 pub trait Position {
@@ -15,8 +16,14 @@ pub trait Movable {
     fn move_to(&mut self, destination: Vec2f);
     fn offset(&mut self, offset: Vec2f);
 }
+pub trait Rotatable {
+    fn rotate(&mut self, angle_rad: f32);
+}
 pub trait Drawable {
     fn draw(&self);
+}
+pub trait Updatable {
+    fn update(&mut self, dt: f32);
 }
 
 #[derive(EnumAsInner)]
@@ -69,6 +76,29 @@ impl Drawable for Body {
             Shape::Circle(circle) => circle.draw(),
             Shape::Polygon(polygon) => polygon.draw(),
         }
+    }
+}
+impl Updatable for Body {
+    fn update(&mut self, dt: f32) {
+        if let Body::Dynamic(dyn_body) = self {
+            dyn_body.offset(dyn_body.linear_velocity * dt);
+            if let Shape::Polygon(polygon) = &mut dyn_body.data.shape {
+                polygon.rotate(dyn_body.rotation_velocity * dt);
+            }
+        }
+    }
+}
+impl CollisionWith<Body> for Body {
+    fn collides(&self, other: &Body) -> Option<collision::CollisionResponse> {
+        let shape = match &self {
+            Body::Static(body) => &body.data.shape,
+            Body::Dynamic(body) => &body.data.shape,
+        };
+        let other = match other {
+            Body::Static(body) => &body.data.shape,
+            Body::Dynamic(body) => &body.data.shape,
+        };
+        shape.collides(other)
     }
 }
 

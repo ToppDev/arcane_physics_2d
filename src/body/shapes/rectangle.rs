@@ -1,6 +1,6 @@
 use crate::math::{Vec2d, Vec2f};
 
-pub fn calc_rect_vertices(x: f32, y: f32, w: f32, h: f32, rot: f32) -> [Vec2f; 4] {
+pub fn calc_rect_vertices(x: f32, y: f32, w: f32, h: f32, rot_deg: f32) -> [Vec2f; 4] {
     let half_width = (w / 2.0) as f64;
     let half_height = (h / 2.0) as f64;
     let pos = Vec2d::new(x as f64, y as f64);
@@ -11,7 +11,7 @@ pub fn calc_rect_vertices(x: f32, y: f32, w: f32, h: f32, rot: f32) -> [Vec2f; 4
         Vec2d::new(half_width, half_height),
         Vec2d::new(-half_width, half_height),
     ];
-    let rotation = nalgebra::Rotation2::new((rot as f64).to_radians());
+    let rotation = nalgebra::Rotation2::new((rot_deg as f64).to_radians());
 
     vertices
         .map(|x| rotation * x)
