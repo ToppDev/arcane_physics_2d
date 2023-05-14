@@ -9,12 +9,12 @@ use crate::{
 };
 
 use super::{
-    components::{BodyColor, Movable, Position, Positionable, Rotatable, Velocity},
+    components::{BodyColor, Colored, Movable, Position, Positionable, Rotatable, Velocity},
     BodyType, Drawable, Dynamic, Static, Updatable,
 };
 
 pub struct Polygon<T: BodyType> {
-    body_type: std::marker::PhantomData<T>,
+    body_kinematic_type: std::marker::PhantomData<T>,
     centroid: Position,
     vertices: Vec<Vec2f>,
     velocity: Velocity,
@@ -35,7 +35,7 @@ impl<T: BodyType> Polygon<T> {
 
         let centroid = calc_polygon_centroid(points);
         Ok(Self {
-            body_type: std::marker::PhantomData::<T>,
+            body_kinematic_type: std::marker::PhantomData::<T>,
             centroid: Position(centroid),
             vertices: points.iter().map(|x| x - centroid).collect(),
             velocity: Velocity {
@@ -67,7 +67,7 @@ impl<T: BodyType> Polygon<T> {
 
         let points = calc_rect_vertices(center.x, center.y, width, height, rotation_deg);
         Ok(Self {
-            body_type: std::marker::PhantomData::<T>,
+            body_kinematic_type: std::marker::PhantomData::<T>,
             centroid: Position(center),
             vertices: points.iter().map(|x| x - center).collect(),
             velocity: Velocity {
@@ -82,6 +82,10 @@ impl<T: BodyType> Polygon<T> {
                 area,
             },
         })
+    }
+
+    pub fn vertices(&self) -> &[Vec2f] {
+        &self.vertices
     }
 }
 
@@ -118,6 +122,18 @@ impl Rotatable for Polygon<Dynamic> {
     }
     fn rotation_velocity_mut(&mut self) -> &mut f32 {
         &mut self.velocity.rotation
+    }
+}
+
+impl<T: BodyType> Colored for Polygon<T> {
+    fn change_fill_color(&mut self, color: crate::draw::Color) {
+        self.color.fill = color;
+    }
+    fn change_hitbox_color(&mut self, color: crate::draw::Color) {
+        self.color.hitbox = Some(color);
+    }
+    fn remove_hitbox_color(&mut self) {
+        self.color.hitbox = None;
     }
 }
 

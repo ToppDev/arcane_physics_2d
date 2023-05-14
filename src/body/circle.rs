@@ -1,15 +1,20 @@
 use crate::{
-    draw::draw_circle, math::Vec2f, physics::PhysicalProperties, world::validate_body_parameters,
+    collision::{self, CollisionResponse, CollisionWith},
+    draw::draw_circle,
+    math::Vec2f,
+    physics::PhysicalProperties,
+    world::validate_body_parameters,
     SHAPE_BORDER_WIDTH,
 };
 
 use super::{
-    components::{BodyColor, Movable, Position, Positionable, Rotatable, Velocity},
+    components::{BodyColor, Colored, Movable, Position, Positionable, Rotatable, Velocity},
+    polygon::Polygon,
     BodyType, Drawable, Dynamic, Static, Updatable,
 };
 
 pub struct Circle<T: BodyType> {
-    body_type: std::marker::PhantomData<T>,
+    body_kinematic_type: std::marker::PhantomData<T>,
     position: Position,
     radius: f32,
     velocity: Velocity,
@@ -30,7 +35,7 @@ impl<T: BodyType> Circle<T> {
         let mass = area * density;
 
         Ok(Self {
-            body_type: std::marker::PhantomData::<T>,
+            body_kinematic_type: std::marker::PhantomData::<T>,
             position: Position(pos),
             radius,
             velocity: Velocity {
@@ -45,6 +50,10 @@ impl<T: BodyType> Circle<T> {
                 area,
             },
         })
+    }
+
+    pub fn radius(&self) -> f32 {
+        self.radius
     }
 }
 
@@ -69,13 +78,15 @@ impl Movable for Circle<Dynamic> {
     }
 }
 
-impl Rotatable for Circle<Dynamic> {
-    fn rotate(&mut self, _angle_rad: f32) {}
-    fn rotation_velocity(&self) -> f32 {
-        self.velocity.rotation
+impl<T: BodyType> Colored for Circle<T> {
+    fn change_fill_color(&mut self, color: crate::draw::Color) {
+        self.color.fill = color;
     }
-    fn rotation_velocity_mut(&mut self) -> &mut f32 {
-        &mut self.velocity.rotation
+    fn change_hitbox_color(&mut self, color: crate::draw::Color) {
+        self.color.hitbox = Some(color);
+    }
+    fn remove_hitbox_color(&mut self) {
+        self.color.hitbox = None;
     }
 }
 

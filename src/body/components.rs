@@ -28,3 +28,8 @@ pub trait Rotatable {
     fn rotation_velocity(&self) -> f32;
     fn rotation_velocity_mut(&mut self) -> &mut f32;
 }
+pub trait Colored {
+    fn change_fill_color(&mut self, color: Color);
+    fn change_hitbox_color(&mut self, color: Color);
+    fn remove_hitbox_color(&mut self);
+}

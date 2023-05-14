@@ -1,7 +1,7 @@
 use crate::math::Vec2f;
 
 pub type Color = macroquad::color::Color;
-pub use macroquad::color::colors;
+pub use macroquad::color::colors::*;
 
 /// Draws a solid circle centered at [x, y] with a given radius r and color.
 pub fn draw_circle(x: f32, y: f32, r: f32, color: Color) {
