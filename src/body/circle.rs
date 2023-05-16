@@ -1,15 +1,10 @@
 use crate::{
-    collision::{self, CollisionResponse, CollisionWith},
-    draw::draw_circle,
-    math::Vec2f,
-    physics::PhysicalProperties,
-    world::validate_body_parameters,
+    draw::draw_circle, math::Vec2f, physics::PhysicalProperties, world::validate_body_parameters,
     SHAPE_BORDER_WIDTH,
 };
 
 use super::{
-    components::{BodyColor, Colored, Movable, Position, Positionable, Rotatable, Velocity},
-    polygon::Polygon,
+    components::{BodyColor, Colored, Movable, Position, Positionable, Velocity},
     BodyType, Drawable, Dynamic, Static, Updatable,
 };
 
@@ -116,7 +111,7 @@ impl<T: BodyType> Drawable for Circle<T> {
 }
 
 impl Updatable for Circle<Static> {
-    fn update(&mut self, dt: f32) {}
+    fn update(&mut self, _dt: f32) {}
 }
 impl Updatable for Circle<Dynamic> {
     fn update(&mut self, dt: f32) {

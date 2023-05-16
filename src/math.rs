@@ -41,10 +41,18 @@ pub fn calc_rect_vertices(x: f32, y: f32, w: f32, h: f32, rot_deg: f32) -> [Vec2
     let half_height = (h / 2.0) as f64;
     let pos = Vec2d::new(x as f64, y as f64);
 
+    // (-w/2,  h/2)__________________(w/2,  h/2)
+    //     [3]     |                |    [0]
+    //             |                |
+    //             |     (0,0)      |
+    //             |                |
+    //             |                |
+    //     [2]     |________________|    [1]
+    // (-w/2, -h/2)                  (w/2, -h/2)
     let vertices = [
-        Vec2d::new(-half_width, -half_height),
-        Vec2d::new(half_width, -half_height),
         Vec2d::new(half_width, half_height),
+        Vec2d::new(half_width, -half_height),
+        Vec2d::new(-half_width, -half_height),
         Vec2d::new(-half_width, half_height),
     ];
     let rotation = nalgebra::Rotation2::new((rot_deg as f64).to_radians());
@@ -89,12 +97,12 @@ mod tests {
     }
     #[test]
     fn area_arrow() {
-        // (10,  -2) _____(15, -2)
-        //          |     \
-        //          |      \ (18, -6)
+        // (10,  -2) _____(15, -2) [1]
+        //    [0]   |     \
+        //          |      \ (18, -6) [2]
         //          |      /
-        //          |_____/
-        // (10, -10)      (15, -10)
+        //    [4]   |_____/
+        // (10, -10)      (15, -10) [3]
         let points = [
             Vec2f::new(10.0, -2.0),
             Vec2f::new(15.0, -2.0),
@@ -109,14 +117,22 @@ mod tests {
 
     #[test]
     fn gen_vertices_centered() {
+        // (-w/2,  h/2)__________________(w/2,  h/2)
+        //     [3]     |                |    [0]
+        //             |                |
+        //             |     (0,0)      |
+        //             |                |
+        //             |                |
+        //     [2]     |________________|    [1]
+        // (-w/2, -h/2)                  (w/2, -h/2)
         let (x, y, w, h, r) = (0.0, 0.0, 20.0, 100.0, 0.0);
         let vertices = calc_rect_vertices(x, y, w, h, r);
         assert_eq!(
             vertices,
             [
-                Vec2f::new(-w / 2.0, -h / 2.0),
-                Vec2f::new(w / 2.0, -h / 2.0),
                 Vec2f::new(w / 2.0, h / 2.0),
+                Vec2f::new(w / 2.0, -h / 2.0),
+                Vec2f::new(-w / 2.0, -h / 2.0),
                 Vec2f::new(-w / 2.0, h / 2.0),
             ]
         );
@@ -129,9 +145,9 @@ mod tests {
         assert_eq!(
             vertices,
             [
-                Vec2f::new(x - w / 2.0, y - h / 2.0),
-                Vec2f::new(x + w / 2.0, y - h / 2.0),
                 Vec2f::new(x + w / 2.0, y + h / 2.0),
+                Vec2f::new(x + w / 2.0, y - h / 2.0),
+                Vec2f::new(x - w / 2.0, y - h / 2.0),
                 Vec2f::new(x - w / 2.0, y + h / 2.0),
             ]
         );
@@ -139,14 +155,24 @@ mod tests {
 
     #[test]
     fn gen_vertices_rot_90() {
+        //                                              (-h/2,  w/2)________h________(h/2,  w/2)
+        // (-w/2,  h/2)_________w________(w/2,  h/2)         [0]    |               |     [1]
+        //     [3]     |                |    [0]                    |               |
+        //             |                |           90°             |               |
+        //             h     (0,0)      h          ====>            w     (0,0)     w
+        //             |                |                           |               |
+        //             |                |                           |               |
+        //     [2]     |________w_______|    [1]                    |               |
+        // (-w/2, -h/2)                  (w/2, -h/2)         [3]    |_______h_______|     [2]
+        //                                              (-h/2, -w/2)                 (h/2, -w/2)
         let (x, y, w, h, r) = (0.0, 0.0, 20.0, 100.0, 90.0);
         let vertices = calc_rect_vertices(x, y, w, h, r);
         assert_eq!(
             vertices,
             [
-                Vec2f::new(h / 2.0, -w / 2.0),
-                Vec2f::new(h / 2.0, w / 2.0),
                 Vec2f::new(-h / 2.0, w / 2.0),
+                Vec2f::new(h / 2.0, w / 2.0),
+                Vec2f::new(h / 2.0, -w / 2.0),
                 Vec2f::new(-h / 2.0, -w / 2.0),
             ]
         );
@@ -154,14 +180,24 @@ mod tests {
 
     #[test]
     fn gen_vertices_rot_m90() {
+        //                                              (-h/2,  w/2)________h________(h/2,  w/2)
+        // (-w/2,  h/2)_________w________(w/2,  h/2)         [2]    |               |     [3]
+        //     [3]     |                |    [0]                    |               |
+        //             |                |          -90°             |               |
+        //             h     (0,0)      h          ====>            w     (0,0)     w
+        //             |                |                           |               |
+        //             |                |                           |               |
+        //     [2]     |________w_______|    [1]                    |               |
+        // (-w/2, -h/2)                  (w/2, -h/2)         [1]    |_______h_______|     [0]
+        //                                              (-h/2, -w/2)                 (h/2, -w/2)
         let (x, y, w, h, r) = (0.0, 0.0, 20.0, 100.0, -90.0);
         let vertices = calc_rect_vertices(x, y, w, h, r);
         assert_eq!(
             vertices,
             [
-                Vec2f::new(-h / 2.0, w / 2.0),
-                Vec2f::new(-h / 2.0, -w / 2.0),
                 Vec2f::new(h / 2.0, -w / 2.0),
+                Vec2f::new(-h / 2.0, -w / 2.0),
+                Vec2f::new(-h / 2.0, w / 2.0),
                 Vec2f::new(h / 2.0, w / 2.0),
             ]
         );
@@ -169,18 +205,28 @@ mod tests {
 
     #[test]
     fn gen_vertices_rot_45() {
+        //                                                        (0, d)
+        // (-w/2,  h/2)_________w________(w/2,  h/2)            [0] /\
+        //     [3]     |                |    [0]                   /  \
+        //             |                |           45°           /    \  [1]
+        //             h     (0,0)      h          ====> (-d, 0) /     / (d, 0)
+        //             |                |                    [3] \    /
+        //             |                |                         \  /
+        //     [2]     |________w_______|    [1]                   \/[2]
+        // (-w/2, -h/2)                  (w/2, -h/2)             (0, -d)
+        //
         let (x, y, w, h, r) = (0.0, 0.0, 20.0, 20.0, 45.0);
         let vertices = calc_rect_vertices(x, y, w, h, r);
         let diag = ((w / 2.0).powi(2) + (h / 2.0).powi(2)).sqrt();
 
         assert_approx_eq!(vertices[0].x, 0.0);
-        assert_approx_eq!(vertices[0].y, -diag);
+        assert_approx_eq!(vertices[0].y, diag);
 
         assert_approx_eq!(vertices[1].x, diag);
         assert_approx_eq!(vertices[1].y, 0.0);
 
         assert_approx_eq!(vertices[2].x, 0.0);
-        assert_approx_eq!(vertices[2].y, diag);
+        assert_approx_eq!(vertices[2].y, -diag);
 
         assert_approx_eq!(vertices[3].x, -diag);
         assert_approx_eq!(vertices[3].y, 0.0);

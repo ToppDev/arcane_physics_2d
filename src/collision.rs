@@ -4,8 +4,12 @@ use crate::{
     body::{circle::Circle, components::Positionable, polygon::Polygon, BodyType},
     draw::*,
     math::Vec2f,
-    DEBUG_DRAW_COLLISION,
 };
+
+const DEBUG_DRAW_COLLISION: bool = true;
+const DEBUG_DRAW_COLLISION_CIRCLE_CIRCLE: bool = false;
+const DEBUG_DRAW_COLLISION_POLYGON_POLYGON: bool = false;
+const DEBUG_DRAW_COLLISION_POLYGON_CIRCLE: bool = true;
 
 pub struct CollisionResponse {
     pub normal: Vec2f,
@@ -21,6 +25,27 @@ impl<T: BodyType, U: BodyType> CollisionWith<Circle<U>> for Circle<T> {
         let normal = other.position() - self.position();
         let distance = normal.norm();
         let radii = self.radius() + other.radius();
+
+        if DEBUG_DRAW_COLLISION && DEBUG_DRAW_COLLISION_CIRCLE_CIRCLE {
+            let end = self.position() + (1.0 + self.radius()) * normal.normalize();
+            draw_line(
+                self.position().x,
+                self.position().y,
+                end.x,
+                end.y,
+                0.05,
+                GRAY,
+            );
+            let end = other.position() + (1.0 + other.radius()) * -normal.normalize();
+            draw_line(
+                other.position().x,
+                other.position().y,
+                end.x,
+                end.y,
+                0.05,
+                GRAY,
+            );
+        }
 
         if distance >= radii {
             return None;
@@ -53,10 +78,7 @@ impl<T: BodyType, U: BodyType> CollisionWith<Polygon<U>> for Polygon<T> {
             .map(|(p1, p2)| {
                 (
                     p1 + (p2 - p1) / 2.0,
-                    (p2 - p1)
-                        .yx()
-                        .normalize()
-                        .component_mul(&Vec2f::new(1.0, -1.0)),
+                    (p1 - p2).yx().component_mul(&Vec2f::new(1.0, -1.0)),
                 )
             }) // Calculate normal
             .unique_by(|(_, normal)| {
@@ -71,12 +93,15 @@ impl<T: BodyType, U: BodyType> CollisionWith<Polygon<U>> for Polygon<T> {
             })
             .collect();
 
-        if DEBUG_DRAW_COLLISION {
+        if DEBUG_DRAW_COLLISION && DEBUG_DRAW_COLLISION_POLYGON_POLYGON {
             for (start, normal) in &normals {
-                let end = start + normal;
-                draw_line(start.x, start.y, end.x, end.y, 0.05, GRAY)
+                let end = start + normal.normalize();
+                draw_line(start.x, start.y, end.x, end.y, 0.05, GRAY);
             }
         }
+
+        let mut response_depth = f32::MAX;
+        let mut response_normal = Vec2f::zeros();
 
         for (start, normal) in &normals {
             // Separating Axis Theorem (SAT)
@@ -94,8 +119,8 @@ impl<T: BodyType, U: BodyType> CollisionWith<Polygon<U>> for Polygon<T> {
 
             let gap = self_min >= other_max || other_min >= self_max;
 
-            if DEBUG_DRAW_COLLISION {
-                let end = start + normal;
+            if DEBUG_DRAW_COLLISION && DEBUG_DRAW_COLLISION_POLYGON_POLYGON {
+                let end = start + normal.normalize();
                 draw_line(
                     start.x,
                     start.y,
@@ -108,11 +133,28 @@ impl<T: BodyType, U: BodyType> CollisionWith<Polygon<U>> for Polygon<T> {
             if gap {
                 return None;
             }
+
+            let axis_depth = (other_max - self_min).min(self_max - other_min);
+            if axis_depth < response_depth {
+                response_depth = axis_depth;
+                response_normal = *normal;
+            }
+        }
+
+        // Normals where not normalized, so we need to transform the response depth and normal
+        response_depth /= response_normal.norm();
+        response_normal = response_normal.normalize();
+
+        // Normal is not always pointing in direction 'self to other'
+        let direction = other.position() - self.position();
+        if direction.dot(&response_normal) < 0.0 {
+            // Pointing in opposite directions
+            response_normal = -response_normal;
         }
 
         Some(CollisionResponse {
-            normal: Vec2f::x(),
-            depth: 0.0,
+            normal: response_normal,
+            depth: response_depth,
         })
     }
 }

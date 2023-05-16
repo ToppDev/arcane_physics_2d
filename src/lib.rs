@@ -1,3 +1,5 @@
+use std::{thread, time};
+
 use ::rand::{thread_rng, Rng};
 use body::{
     circle::Circle,
@@ -10,7 +12,8 @@ use draw::draw_rectangle;
 use itertools::Itertools;
 use macroquad::{
     color::colors::*,
-    prelude::{is_key_down, set_camera, vec2, Camera2D, Color, KeyCode},
+    prelude::{is_key_down, set_camera, set_default_camera, vec2, Camera2D, Color, KeyCode},
+    text::draw_text,
     time::get_time,
     window::{clear_background, next_frame, screen_height, screen_width},
 };
@@ -37,7 +40,6 @@ impl From<macroquad::file::FileError> for GameError {
 }
 
 const DEBUG_DRAW_SPAWN_AREA: bool = false;
-const DEBUG_DRAW_COLLISION: bool = false;
 
 const INITAL_ZOOM: f32 = 1.0 / 30.0;
 const OBJECT_SIZE: f32 = 2.0; // [m]
@@ -48,11 +50,10 @@ const PLAYER_LINEAR_SPEED: f32 = 10.0; // [m/s]
 const PLAYER_ROTATION_SPEED: f32 = 80.0; // [deg/s]
 
 fn spawn_shapes(objects: &mut Vec<Body>) {
-    // const COLORS: [Color; 20] = [
-    //     BEIGE, BLUE, BROWN, DARKBLUE, DARKBROWN, DARKGRAY, DARKGREEN, DARKPURPLE, GOLD, GRAY,
-    //     GREEN, LIGHTGRAY, LIME, MAGENTA, MAROON, PINK, PURPLE, SKYBLUE, VIOLET, YELLOW,
-    // ];
-    const COLORS: [Color; 1] = [BLUE];
+    const COLORS: [Color; 20] = [
+        BEIGE, BLUE, BROWN, DARKBLUE, DARKBROWN, DARKGRAY, DARKGREEN, DARKPURPLE, GOLD, GRAY,
+        GREEN, LIGHTGRAY, LIME, MAGENTA, MAROON, PINK, PURPLE, SKYBLUE, VIOLET, YELLOW,
+    ];
 
     let mut rng = thread_rng();
     for color in COLORS {
@@ -74,7 +75,7 @@ fn spawn_shapes(objects: &mut Vec<Body>) {
             }
         };
 
-        objects.push(if rng.gen_bool(0.0) {
+        objects.push(if rng.gen_bool(0.5) {
             Body::DynamicCircle(
                 Circle::<Dynamic>::new(
                     pos,
@@ -144,38 +145,39 @@ pub async fn entry_point() -> GameResult {
     ));
 
     let arrow_position = Vec2f::new(-6.0, -4.0);
-    // objects.push(
-    //     // (10,  -2) _____(10.5, -2)
-    //     //          |     \
-    //     //          |      \ (11, -2.5)
-    //     //          |      /
-    //     //          |_____/
-    //     // (10, -3)      (10.5, -3)
-    //     Body::DynamicPolygon(
-    //         Polygon::<Dynamic>::new(
-    //             &[
-    //                 Vec2f::new(arrow_position.x, arrow_position.y),
-    //                 Vec2f::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
-    //                 Vec2f::new(
-    //                     arrow_position.x + OBJECT_SIZE,
-    //                     arrow_position.y - OBJECT_SIZE / 2.0,
-    //                 ),
-    //                 Vec2f::new(
-    //                     arrow_position.x + OBJECT_SIZE / 2.0,
-    //                     arrow_position.y - OBJECT_SIZE,
-    //                 ),
-    //                 Vec2f::new(arrow_position.x, arrow_position.y - OBJECT_SIZE),
-    //             ],
-    //             BodyColor {
-    //                 fill: BLUE,
-    //                 hitbox: Some(WHITE),
-    //             },
-    //             1.0,
-    //             0.0,
-    //         )
-    //         .unwrap(),
-    //     ),
-    // );
+    objects.push(
+        //     [0]             [1]
+        // (10,  -2) _____(10.5, -2)
+        //          |     \
+        //          |      \ (11, -2.5) [2]
+        //          |      /
+        //     [4]  |_____/    [3]
+        // (10, -3)      (10.5, -3)
+        Body::DynamicPolygon(
+            Polygon::<Dynamic>::new(
+                &[
+                    Vec2f::new(arrow_position.x, arrow_position.y),
+                    Vec2f::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
+                    Vec2f::new(
+                        arrow_position.x + OBJECT_SIZE,
+                        arrow_position.y - OBJECT_SIZE / 2.0,
+                    ),
+                    Vec2f::new(
+                        arrow_position.x + OBJECT_SIZE / 2.0,
+                        arrow_position.y - OBJECT_SIZE,
+                    ),
+                    Vec2f::new(arrow_position.x, arrow_position.y - OBJECT_SIZE),
+                ],
+                BodyColor {
+                    fill: BLUE,
+                    hitbox: Some(WHITE),
+                },
+                1.0,
+                0.0,
+            )
+            .unwrap(),
+        ),
+    );
     spawn_shapes(&mut objects);
 
     let zoom = INITAL_ZOOM;
@@ -183,8 +185,8 @@ pub async fn entry_point() -> GameResult {
     let mut last_update = get_time();
 
     loop {
-        let dt = (get_time() - last_update) as f32;
-        last_update = get_time();
+        let update_time = get_time();
+        let dt = (update_time - last_update) as f32;
 
         // Camera movement ########################################################################
         // match mouse_wheel() {
@@ -301,7 +303,18 @@ pub async fn entry_point() -> GameResult {
             object.draw();
         }
 
+        set_default_camera();
+        let fps = (1.0 / dt) as i32;
+        draw_text(format!("{fps} fps").as_str(), 10.0, 25.0, 20.0, WHITE);
+
         // End of Frame ###########################################################################
+        const FRAME_LIMIT: f32 = 60.0;
+        let wait_time = 1.0 / FRAME_LIMIT - dt;
+        if wait_time > 0.0 {
+            thread::sleep(time::Duration::from_secs_f32(wait_time));
+        }
+
+        last_update = update_time;
         next_frame().await
     }
 }

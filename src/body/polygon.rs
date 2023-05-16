@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::{
-    draw::{draw_circle, draw_triangle},
+    draw::draw_triangle,
     math::{calc_polygon_area, calc_polygon_centroid, calc_rect_vertices, Vec2f},
     physics::PhysicalProperties,
     world::validate_body_parameters,
