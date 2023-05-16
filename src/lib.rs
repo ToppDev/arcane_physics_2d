@@ -56,60 +56,64 @@ fn spawn_shapes(objects: &mut Vec<Body>) {
     ];
 
     let mut rng = thread_rng();
-    for color in COLORS {
-        let pos = loop {
-            let pos = Vec2f::new(
-                rng.gen_range(-SPAWN_SIZE.0 / 2.0..=SPAWN_SIZE.0 / 2.0),
-                rng.gen_range(-SPAWN_SIZE.1 / 2.0..=SPAWN_SIZE.1 / 2.0),
-            );
-            let player = objects.first().unwrap();
-            if (player.position() - pos).norm() < 3.0 * OBJECT_SIZE {
-                continue;
-            }
+    for _ in 0..=3 {
+        for color in COLORS {
+            let mut pos_i = 0;
+            let mut min_dist = 2.0 * OBJECT_SIZE;
+            let pos = loop {
+                pos_i += 1;
+                if pos_i > 1000 {
+                    min_dist /= 1.9;
+                }
+                let pos = Vec2f::new(
+                    rng.gen_range(-SPAWN_SIZE.0 / 2.0..=SPAWN_SIZE.0 / 2.0),
+                    rng.gen_range(-SPAWN_SIZE.1 / 2.0..=SPAWN_SIZE.1 / 2.0),
+                );
 
-            if objects
-                .iter()
-                .all(|obj| (obj.position() - pos).norm() > 2.0 * OBJECT_SIZE)
-            {
-                break pos;
-            }
-        };
+                if objects
+                    .iter()
+                    .all(|obj| (obj.position() - pos).norm() > min_dist)
+                {
+                    break pos;
+                }
+            };
 
-        objects.push(if rng.gen_bool(0.5) {
-            Body::DynamicCircle(
-                Circle::<Dynamic>::new(
-                    pos,
-                    OBJECT_SIZE / 2.0,
-                    BodyColor {
-                        fill: color,
-                        hitbox: Some(WHITE),
-                    },
-                    2.0,
-                    0.5,
+            objects.push(if rng.gen_bool(0.5) {
+                Body::DynamicCircle(
+                    Circle::<Dynamic>::new(
+                        pos,
+                        OBJECT_SIZE / 2.0,
+                        BodyColor {
+                            fill: color,
+                            hitbox: Some(WHITE),
+                        },
+                        2.0,
+                        0.5,
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        } else {
-            Body::DynamicPolygon(
-                Polygon::<Dynamic>::new_rect(
-                    pos,
-                    OBJECT_SIZE * rng.gen_range(1.0..=1.0),
-                    OBJECT_SIZE * rng.gen_range(1.0..=1.0),
-                    if rng.gen_bool(1.0) {
-                        0.0
-                    } else {
-                        rng.gen_range(0.0..=90.0)
-                    },
-                    BodyColor {
-                        fill: color,
-                        hitbox: Some(WHITE),
-                    },
-                    2.0,
-                    0.5,
+            } else {
+                Body::DynamicPolygon(
+                    Polygon::<Dynamic>::new_rect(
+                        pos,
+                        OBJECT_SIZE * rng.gen_range(1.0..=1.0),
+                        OBJECT_SIZE * rng.gen_range(1.0..=1.0),
+                        if rng.gen_bool(0.8) {
+                            0.0
+                        } else {
+                            rng.gen_range(0.0..=90.0)
+                        },
+                        BodyColor {
+                            fill: color,
+                            hitbox: Some(WHITE),
+                        },
+                        2.0,
+                        0.5,
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
-        });
+            });
+        }
     }
 }
 
@@ -131,8 +135,8 @@ pub async fn entry_point() -> GameResult {
     objects.push(Body::DynamicPolygon(
         Polygon::<Dynamic>::new_rect(
             Vec2f::new(0.0, 0.0),
-            OBJECT_SIZE,
-            OBJECT_SIZE,
+            OBJECT_SIZE * 0.5,
+            OBJECT_SIZE * 0.5,
             0.0,
             BodyColor {
                 fill: ORANGE,
