@@ -5,25 +5,16 @@ use body::{
     circle::Circle,
     components::{Colored, Movable, Positionable, Rotatable},
     polygon::Polygon,
-    Body, Drawable, Dynamic, Updatable,
+    Body, RigidBodyType,
 };
 use collision::CollisionWith;
-use draw::draw_rectangle;
 use itertools::Itertools;
-use macroquad::{
-    color::colors::*,
-    prelude::{is_key_down, set_camera, set_default_camera, vec2, Camera2D, Color, KeyCode},
-    text::draw_text,
-    time::get_time,
-    window::{clear_background, next_frame, screen_height, screen_width},
-};
-use math::Vec2f;
+use macroquad::{color::colors::*, prelude::*};
 
 use crate::body::components::BodyColor;
 
 mod body;
 mod collision;
-mod draw;
 mod math;
 mod physics;
 pub mod world;
@@ -65,53 +56,51 @@ fn spawn_shapes(objects: &mut Vec<Body>) {
                 if pos_i > 1000 {
                     min_dist /= 1.9;
                 }
-                let pos = Vec2f::new(
+                let pos = Vec2::new(
                     rng.gen_range(-SPAWN_SIZE.0 / 2.0..=SPAWN_SIZE.0 / 2.0),
                     rng.gen_range(-SPAWN_SIZE.1 / 2.0..=SPAWN_SIZE.1 / 2.0),
                 );
 
                 if objects
                     .iter()
-                    .all(|obj| (obj.position() - pos).norm() > min_dist)
+                    .all(|obj| (obj.position() - pos).length() > min_dist)
                 {
                     break pos;
                 }
             };
 
             objects.push(if rng.gen_bool(0.5) {
-                Body::DynamicCircle(
-                    Circle::<Dynamic>::new(
-                        pos,
-                        OBJECT_SIZE / 2.0,
-                        BodyColor {
-                            fill: color,
-                            hitbox: Some(WHITE),
-                        },
-                        2.0,
-                        0.5,
-                    )
-                    .unwrap(),
+                Body::new_circle(
+                    pos,
+                    OBJECT_SIZE / 2.0,
+                    BodyColor {
+                        fill: color,
+                        hitbox: Some(WHITE),
+                    },
+                    RigidBodyType::Dynamic,
+                    2.0,
+                    0.5,
                 )
+                .unwrap()
             } else {
-                Body::DynamicPolygon(
-                    Polygon::<Dynamic>::new_rect(
-                        pos,
-                        OBJECT_SIZE * rng.gen_range(1.0..=1.0),
-                        OBJECT_SIZE * rng.gen_range(1.0..=1.0),
-                        if rng.gen_bool(0.8) {
-                            0.0
-                        } else {
-                            rng.gen_range(0.0..=90.0)
-                        },
-                        BodyColor {
-                            fill: color,
-                            hitbox: Some(WHITE),
-                        },
-                        2.0,
-                        0.5,
-                    )
-                    .unwrap(),
+                Body::new_rect(
+                    pos,
+                    OBJECT_SIZE * rng.gen_range(1.0..=1.0),
+                    OBJECT_SIZE * rng.gen_range(1.0..=1.0),
+                    if rng.gen_bool(0.8) {
+                        0.0
+                    } else {
+                        rng.gen_range(0.0..=90.0)
+                    },
+                    BodyColor {
+                        fill: color,
+                        hitbox: Some(WHITE),
+                    },
+                    RigidBodyType::Dynamic,
+                    2.0,
+                    0.5,
                 )
+                .unwrap()
             });
         }
     }
@@ -119,36 +108,38 @@ fn spawn_shapes(objects: &mut Vec<Body>) {
 
 pub async fn entry_point() -> GameResult {
     let mut objects: Vec<Body> = Vec::new();
-    // objects.push(Body::DynamicCircle(
-    //     Circle::<Dynamic>::new(
-    //         Vec2f::new(0.0, 0.0),
-    //         OBJECT_SIZE / 2.0,
-    //         BodyColor {
-    //             fill: ORANGE,
-    //             hitbox: Some(WHITE),
-    //         },
-    //         2.0,
-    //         0.5,
-    //     )
-    //     .unwrap(),
-    // ));
-    objects.push(Body::DynamicPolygon(
-        Polygon::<Dynamic>::new_rect(
-            Vec2f::new(0.0, 0.0),
-            OBJECT_SIZE * 0.5,
-            OBJECT_SIZE * 0.5,
-            0.0,
+    objects.push(
+        Body::new_circle(
+            Vec2::new(0.0, 0.0),
+            OBJECT_SIZE / 2.0,
             BodyColor {
                 fill: ORANGE,
                 hitbox: Some(WHITE),
             },
+            RigidBodyType::Dynamic,
             2.0,
             0.5,
         )
         .unwrap(),
-    ));
+    );
+    // objects.push(
+    //     Body::new_rect(
+    //         Vec2::new(0.0, 0.0),
+    //         OBJECT_SIZE,
+    //         OBJECT_SIZE,
+    //         0.0,
+    //         BodyColor {
+    //             fill: ORANGE,
+    //             hitbox: Some(WHITE),
+    //         },
+    //         RigidBodyType::Dynamic,
+    //         2.0,
+    //         0.5,
+    //     )
+    //     .unwrap(),
+    // );
 
-    let arrow_position = Vec2f::new(-6.0, -4.0);
+    let arrow_position = Vec2::new(-6.0, -4.0);
     objects.push(
         //     [0]             [1]
         // (10,  -2) _____(10.5, -2)
@@ -157,30 +148,29 @@ pub async fn entry_point() -> GameResult {
         //          |      /
         //     [4]  |_____/    [3]
         // (10, -3)      (10.5, -3)
-        Body::DynamicPolygon(
-            Polygon::<Dynamic>::new(
-                &[
-                    Vec2f::new(arrow_position.x, arrow_position.y),
-                    Vec2f::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
-                    Vec2f::new(
-                        arrow_position.x + OBJECT_SIZE,
-                        arrow_position.y - OBJECT_SIZE / 2.0,
-                    ),
-                    Vec2f::new(
-                        arrow_position.x + OBJECT_SIZE / 2.0,
-                        arrow_position.y - OBJECT_SIZE,
-                    ),
-                    Vec2f::new(arrow_position.x, arrow_position.y - OBJECT_SIZE),
-                ],
-                BodyColor {
-                    fill: BLUE,
-                    hitbox: Some(WHITE),
-                },
-                1.0,
-                0.0,
-            )
-            .unwrap(),
-        ),
+        Body::new_polygon(
+            &[
+                Vec2::new(arrow_position.x, arrow_position.y),
+                Vec2::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
+                Vec2::new(
+                    arrow_position.x + OBJECT_SIZE,
+                    arrow_position.y - OBJECT_SIZE / 2.0,
+                ),
+                Vec2::new(
+                    arrow_position.x + OBJECT_SIZE / 2.0,
+                    arrow_position.y - OBJECT_SIZE,
+                ),
+                Vec2::new(arrow_position.x, arrow_position.y - OBJECT_SIZE),
+            ],
+            BodyColor {
+                fill: BLUE,
+                hitbox: Some(WHITE),
+            },
+            RigidBodyType::Dynamic,
+            1.0,
+            0.0,
+        )
+        .unwrap(),
     );
     spawn_shapes(&mut objects);
 
@@ -232,28 +222,16 @@ pub async fn entry_point() -> GameResult {
             (false, true) => -1.0,
             _ => 0.0,
         };
-        let dir = Vec2f::new(dir_x, dir_y)
-            .try_normalize(0.1)
-            .unwrap_or(Vec2f::zeros());
+        let dir = Vec2::new(dir_x, dir_y).normalize_or_zero();
 
-        match *objects.first_mut().unwrap() {
-            Body::DynamicCircle(ref mut circle) => {
-                *circle.linear_velocity_mut() = PLAYER_LINEAR_SPEED * dir
-            }
-            Body::DynamicPolygon(ref mut polygon) => {
-                *polygon.linear_velocity_mut() = PLAYER_LINEAR_SPEED * dir
-            }
-            _ => panic!("The player has to be a dynamic body!!!"),
-        };
+        *objects.first_mut().unwrap().linear_velocity_mut() = PLAYER_LINEAR_SPEED * dir;
 
         let rot_dir = match (is_key_down(KeyCode::Q), is_key_down(KeyCode::E)) {
             (true, false) => 1.0,
             (false, true) => -1.0,
             _ => 0.0,
         };
-        if let Body::DynamicPolygon(ref mut dyn_polygon) = *objects.first_mut().unwrap() {
-            *dyn_polygon.rotation_velocity_mut() = PLAYER_ROTATION_SPEED.to_radians() * rot_dir;
-        };
+        *objects.first_mut().unwrap().rotation_velocity_mut() = PLAYER_ROTATION_SPEED * rot_dir;
 
         // Background #############################################################################
         clear_background(BLACK);
@@ -280,23 +258,19 @@ pub async fn entry_point() -> GameResult {
             if let Some(collision) = objects[i].collides(&objects[j]) {
                 objects[i].change_hitbox_color(RED);
                 objects[j].change_hitbox_color(RED);
-                match &mut objects[i] {
-                    Body::DynamicCircle(circle) => {
-                        circle.offset(collision.normal * collision.depth / 2.0)
+
+                match (objects[i].body_type(), objects[j].body_type()) {
+                    (RigidBodyType::Dynamic, RigidBodyType::Dynamic) => {
+                        objects[i].offset(-collision.normal * collision.depth / 2.0);
+                        objects[j].offset(collision.normal * collision.depth / 2.0);
                     }
-                    Body::DynamicPolygon(polygon) => {
-                        polygon.offset(collision.normal * collision.depth / 2.0)
+                    (RigidBodyType::Dynamic, RigidBodyType::Fixed) => {
+                        objects[i].offset(-collision.normal * collision.depth);
                     }
-                    _ => (),
-                }
-                match &mut objects[j] {
-                    Body::DynamicCircle(circle) => {
-                        circle.offset(-collision.normal * collision.depth / 2.0)
+                    (RigidBodyType::Fixed, RigidBodyType::Dynamic) => {
+                        objects[j].offset(collision.normal * collision.depth);
                     }
-                    Body::DynamicPolygon(polygon) => {
-                        polygon.offset(-collision.normal * collision.depth / 2.0)
-                    }
-                    _ => (),
+                    (_, _) => (),
                 }
             }
         }

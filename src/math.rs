@@ -1,13 +1,7 @@
 use itertools::Itertools;
+use macroquad::prelude::*;
 
-extern crate nalgebra as na;
-
-pub type Vec2f = na::Vector2<f32>;
-pub type Vec2d = na::Vector2<f64>;
-pub type Point2f = na::Point2<f32>;
-pub type Point2d = na::Point2<f64>;
-
-pub fn calc_polygon_area(points: &[Vec2f]) -> f32 {
+pub fn calc_polygon_area(points: &[Vec2]) -> f32 {
     let sum: f32 = points
         .iter()
         .circular_tuple_windows()
@@ -16,9 +10,9 @@ pub fn calc_polygon_area(points: &[Vec2f]) -> f32 {
     0.5 * sum.abs()
 }
 
-pub fn calc_polygon_centroid(points: &[Vec2f]) -> Vec2f {
+pub fn calc_polygon_centroid(points: &[Vec2]) -> Vec2 {
     let n = points.len();
-    let mut centroid = Vec2f::zeros();
+    let mut centroid = Vec2::ZERO;
     let mut area = 0.0;
 
     for i in 0..n {
@@ -36,10 +30,10 @@ pub fn calc_polygon_centroid(points: &[Vec2f]) -> Vec2f {
     centroid
 }
 
-pub fn calc_rect_vertices(x: f32, y: f32, w: f32, h: f32, rot_deg: f32) -> [Vec2f; 4] {
+pub fn calc_rect_vertices(x: f32, y: f32, w: f32, h: f32, rot_deg: f32) -> [Vec2; 4] {
     let half_width = (w / 2.0) as f64;
     let half_height = (h / 2.0) as f64;
-    let pos = Vec2d::new(x as f64, y as f64);
+    let pos = DVec2::new(x as f64, y as f64);
 
     // (-w/2,  h/2)__________________(w/2,  h/2)
     //     [3]     |                |    [0]
@@ -50,17 +44,16 @@ pub fn calc_rect_vertices(x: f32, y: f32, w: f32, h: f32, rot_deg: f32) -> [Vec2
     //     [2]     |________________|    [1]
     // (-w/2, -h/2)                  (w/2, -h/2)
     let vertices = [
-        Vec2d::new(half_width, half_height),
-        Vec2d::new(half_width, -half_height),
-        Vec2d::new(-half_width, -half_height),
-        Vec2d::new(-half_width, half_height),
+        DVec2::new(half_width, half_height),
+        DVec2::new(half_width, -half_height),
+        DVec2::new(-half_width, -half_height),
+        DVec2::new(-half_width, half_height),
     ];
-    let rotation = nalgebra::Rotation2::new((rot_deg as f64).to_radians());
+    let rotation = DAffine2::from_angle((rot_deg as f64).to_radians());
 
     vertices
-        .map(|x| rotation * x)
-        .map(|x| pos + x)
-        .map(|x| nalgebra::convert(x))
+        .map(|x| rotation.transform_vector2(x))
+        .map(|x| (pos + x).as_vec2())
 }
 
 #[cfg(test)]
@@ -72,10 +65,10 @@ mod tests {
     #[test]
     fn area_rectangle() {
         let points = [
-            Vec2f::new(0.0, 0.0),
-            Vec2f::new(10.0, 0.0),
-            Vec2f::new(10.0, 10.0),
-            Vec2f::new(0.0, 10.0),
+            Vec2::new(0.0, 0.0),
+            Vec2::new(10.0, 0.0),
+            Vec2::new(10.0, 10.0),
+            Vec2::new(0.0, 10.0),
         ];
         assert_eq!(calc_polygon_area(&points), 10.0 * 10.0);
     }
@@ -84,12 +77,12 @@ mod tests {
         let cos_60 = 60.0_f32.to_radians().cos();
         let sin_60 = 60.0_f32.to_radians().sin();
         let points = [
-            Vec2f::new(1.0, 0.0),
-            Vec2f::new(cos_60, sin_60),
-            Vec2f::new(-cos_60, sin_60),
-            Vec2f::new(-1.0, 0.0),
-            Vec2f::new(-cos_60, -sin_60),
-            Vec2f::new(cos_60, -sin_60),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(cos_60, sin_60),
+            Vec2::new(-cos_60, sin_60),
+            Vec2::new(-1.0, 0.0),
+            Vec2::new(-cos_60, -sin_60),
+            Vec2::new(cos_60, -sin_60),
         ];
         let edge_length: f32 = 1.0;
         let area_regular_hexagon = (3.0 * 3.0_f32.sqrt() / 2.0) * (edge_length).powi(2);
@@ -104,11 +97,11 @@ mod tests {
         //    [4]   |_____/
         // (10, -10)      (15, -10) [3]
         let points = [
-            Vec2f::new(10.0, -2.0),
-            Vec2f::new(15.0, -2.0),
-            Vec2f::new(18.0, -6.0),
-            Vec2f::new(15.0, -10.0),
-            Vec2f::new(10.0, -10.0),
+            Vec2::new(10.0, -2.0),
+            Vec2::new(15.0, -2.0),
+            Vec2::new(18.0, -6.0),
+            Vec2::new(15.0, -10.0),
+            Vec2::new(10.0, -10.0),
         ];
         let area_rectangle = ((points[1].x - points[0].x) * (points[4].y - points[0].y)).abs();
         let area_triangle = 0.5 * ((points[3].y - points[1].y) * (points[2].x - points[1].x)).abs();
@@ -130,10 +123,10 @@ mod tests {
         assert_eq!(
             vertices,
             [
-                Vec2f::new(w / 2.0, h / 2.0),
-                Vec2f::new(w / 2.0, -h / 2.0),
-                Vec2f::new(-w / 2.0, -h / 2.0),
-                Vec2f::new(-w / 2.0, h / 2.0),
+                Vec2::new(w / 2.0, h / 2.0),
+                Vec2::new(w / 2.0, -h / 2.0),
+                Vec2::new(-w / 2.0, -h / 2.0),
+                Vec2::new(-w / 2.0, h / 2.0),
             ]
         );
     }
@@ -145,10 +138,10 @@ mod tests {
         assert_eq!(
             vertices,
             [
-                Vec2f::new(x + w / 2.0, y + h / 2.0),
-                Vec2f::new(x + w / 2.0, y - h / 2.0),
-                Vec2f::new(x - w / 2.0, y - h / 2.0),
-                Vec2f::new(x - w / 2.0, y + h / 2.0),
+                Vec2::new(x + w / 2.0, y + h / 2.0),
+                Vec2::new(x + w / 2.0, y - h / 2.0),
+                Vec2::new(x - w / 2.0, y - h / 2.0),
+                Vec2::new(x - w / 2.0, y + h / 2.0),
             ]
         );
     }
@@ -170,10 +163,10 @@ mod tests {
         assert_eq!(
             vertices,
             [
-                Vec2f::new(-h / 2.0, w / 2.0),
-                Vec2f::new(h / 2.0, w / 2.0),
-                Vec2f::new(h / 2.0, -w / 2.0),
-                Vec2f::new(-h / 2.0, -w / 2.0),
+                Vec2::new(-h / 2.0, w / 2.0),
+                Vec2::new(h / 2.0, w / 2.0),
+                Vec2::new(h / 2.0, -w / 2.0),
+                Vec2::new(-h / 2.0, -w / 2.0),
             ]
         );
     }
@@ -195,10 +188,10 @@ mod tests {
         assert_eq!(
             vertices,
             [
-                Vec2f::new(h / 2.0, -w / 2.0),
-                Vec2f::new(-h / 2.0, -w / 2.0),
-                Vec2f::new(-h / 2.0, w / 2.0),
-                Vec2f::new(h / 2.0, w / 2.0),
+                Vec2::new(h / 2.0, -w / 2.0),
+                Vec2::new(-h / 2.0, -w / 2.0),
+                Vec2::new(-h / 2.0, w / 2.0),
+                Vec2::new(h / 2.0, w / 2.0),
             ]
         );
     }

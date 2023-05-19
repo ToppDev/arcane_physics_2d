@@ -1,9 +1,9 @@
-use crate::{draw::Color, math::Vec2f};
+use macroquad::prelude::*;
 
-pub struct Position(pub Vec2f);
+pub struct Position(pub Vec2);
 
 pub trait Positionable {
-    fn position(&self) -> Vec2f;
+    fn position(&self) -> Vec2;
 }
 
 pub struct BodyColor {
@@ -13,15 +13,15 @@ pub struct BodyColor {
 
 pub struct Velocity {
     /// Linear velocity in [m/s]
-    pub linear: Vec2f,
+    pub linear: Vec2,
     /// Rotation velocity in [rad/s] for counter-clockwise rotation as positive direction
     pub rotation: f32,
 }
 pub trait Movable {
-    fn move_to(&mut self, destination: Vec2f);
-    fn offset(&mut self, offset: Vec2f);
-    fn linear_velocity(&self) -> &Vec2f;
-    fn linear_velocity_mut(&mut self) -> &mut Vec2f;
+    fn move_to(&mut self, destination: Vec2);
+    fn offset(&mut self, offset: Vec2);
+    fn linear_velocity(&self) -> &Vec2;
+    fn linear_velocity_mut(&mut self) -> &mut Vec2;
 }
 pub trait Rotatable {
     fn rotate(&mut self, angle_rad: f32);
