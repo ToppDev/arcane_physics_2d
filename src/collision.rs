@@ -251,7 +251,7 @@ impl<T: BodyType, U: BodyType> CollisionWith<Polygon<U>> for Circle<T> {
         let direction = other.position() - self.position();
         if direction.dot(&response_normal) < 0.0 {
             // Pointing in opposite directions
-            response_normal = -response_normal;
+            response_normal *= -1.0;
         }
 
         Some(CollisionResponse {
@@ -263,6 +263,11 @@ impl<T: BodyType, U: BodyType> CollisionWith<Polygon<U>> for Circle<T> {
 
 impl<T: BodyType, U: BodyType> CollisionWith<Circle<U>> for Polygon<T> {
     fn collides(&self, other: &Circle<U>) -> Option<CollisionResponse> {
-        other.collides(self)
+        let mut collision_response = other.collides(self);
+        if let Some(mut response) = collision_response {
+            response.normal *= -1.0;
+            collision_response = Some(response);
+        }
+        collision_response
     }
 }
