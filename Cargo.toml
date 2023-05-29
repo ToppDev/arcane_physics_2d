@@ -7,14 +7,19 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+itertools = "0.10"
 rand = "0.8"
 enum-as-inner = "0.5"
-macroquad = "0.3"
-itertools = "0.10"
+bitflags = "2.3.1"
+bevy = "0.10"
+bevy_egui = "0.20"
+bevy-inspector-egui = "0.18"
+bevy_prototype_debug_lines = "0.10.2"
+bevy_prototype_lyon = "0.8"
 
 [dev-dependencies]
 pretty_assertions = "1"
-assert_approx_eq = "1.1"
+approx = "0.5.1"
 
 # Enable max optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]

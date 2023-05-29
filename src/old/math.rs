@@ -30,32 +30,6 @@ pub fn calc_polygon_centroid(points: &[Vec2]) -> Vec2 {
     centroid
 }
 
-pub fn calc_rect_vertices(x: f32, y: f32, w: f32, h: f32, rot_deg: f32) -> [Vec2; 4] {
-    let half_width = (w / 2.0) as f64;
-    let half_height = (h / 2.0) as f64;
-    let pos = DVec2::new(x as f64, y as f64);
-
-    // (-w/2,  h/2)__________________(w/2,  h/2)
-    //     [3]     |                |    [0]
-    //             |                |
-    //             |     (0,0)      |
-    //             |                |
-    //             |                |
-    //     [2]     |________________|    [1]
-    // (-w/2, -h/2)                  (w/2, -h/2)
-    let vertices = [
-        DVec2::new(half_width, half_height),
-        DVec2::new(half_width, -half_height),
-        DVec2::new(-half_width, -half_height),
-        DVec2::new(-half_width, half_height),
-    ];
-    let rotation = DAffine2::from_angle((rot_deg as f64).to_radians());
-
-    vertices
-        .map(|x| rotation.transform_vector2(x))
-        .map(|x| (pos + x).as_vec2())
-}
-
 #[cfg(test)]
 mod tests {
     use assert_approx_eq::assert_approx_eq;
@@ -106,29 +80,6 @@ mod tests {
         let area_rectangle = ((points[1].x - points[0].x) * (points[4].y - points[0].y)).abs();
         let area_triangle = 0.5 * ((points[3].y - points[1].y) * (points[2].x - points[1].x)).abs();
         assert_eq!(calc_polygon_area(&points), area_rectangle + area_triangle);
-    }
-
-    #[test]
-    fn gen_vertices_centered() {
-        // (-w/2,  h/2)__________________(w/2,  h/2)
-        //     [3]     |                |    [0]
-        //             |                |
-        //             |     (0,0)      |
-        //             |                |
-        //             |                |
-        //     [2]     |________________|    [1]
-        // (-w/2, -h/2)                  (w/2, -h/2)
-        let (x, y, w, h, r) = (0.0, 0.0, 20.0, 100.0, 0.0);
-        let vertices = calc_rect_vertices(x, y, w, h, r);
-        assert_eq!(
-            vertices,
-            [
-                Vec2::new(w / 2.0, h / 2.0),
-                Vec2::new(w / 2.0, -h / 2.0),
-                Vec2::new(-w / 2.0, -h / 2.0),
-                Vec2::new(-w / 2.0, h / 2.0),
-            ]
-        );
     }
 
     #[test]
