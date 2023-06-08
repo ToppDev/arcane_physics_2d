@@ -54,6 +54,13 @@ fn debug_render(
             Color::WHITE
         };
 
+        shapes
+            .circle()
+            .position(transform.translation)
+            .radius(0.1)
+            .rotation(transform.rotation)
+            .color(color);
+
         match &collider.shape {
             Shape::Circle(circle) => {
                 shapes

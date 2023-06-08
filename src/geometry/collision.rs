@@ -1,4 +1,5 @@
 use bevy::{math::Vec2Swizzles, prelude::*};
+use bevy_prototype_debug_lines::{DebugLines, DebugLinesPlugin, DebugShapes};
 use itertools::Itertools;
 
 use super::shape::{circle::Circle, convex_polygon::ConvexPolygon};
@@ -14,6 +15,7 @@ pub trait CollisionWith<T> {
         other: &T,
         transform: &Transform,
         other_transform: &Transform,
+        lines: &mut ResMut<DebugLines>,
     ) -> Option<CollisionResponse>;
 }
 
@@ -23,31 +25,22 @@ impl CollisionWith<Circle> for Circle {
         other: &Circle,
         transform: &Transform,
         other_transform: &Transform,
+        lines: &mut ResMut<DebugLines>,
     ) -> Option<CollisionResponse> {
         let normal = (other_transform.translation - transform.translation).truncate();
         let distance = normal.length();
         let radii = self.radius() + other.radius();
 
-        // if DEBUG_DRAW_COLLISION && DEBUG_DRAW_COLLISION_CIRCLE_CIRCLE {
-        //     let end = self.position() + (1.0 + self.radius()) * normal.normalize();
-        //     draw_line(
-        //         self.position().x,
-        //         self.position().y,
-        //         end.x,
-        //         end.y,
-        //         0.05,
-        //         GRAY,
-        //     );
-        //     let end = other.position() + (1.0 + other.radius()) * -normal.normalize();
-        //     draw_line(
-        //         other.position().x,
-        //         other.position().y,
-        //         end.x,
-        //         end.y,
-        //         0.05,
-        //         GRAY,
-        //     );
-        // }
+        // let end = transform.translation.truncate() + (1.0 + self.radius()) * normal.normalize();
+        // lines.line_colored(transform.translation, end.extend(0.0), 0.0, Color::RED);
+        // let end =
+        //     other_transform.translation.truncate() + (1.0 + other.radius()) * -normal.normalize();
+        // lines.line_colored(
+        //     other_transform.translation,
+        //     end.extend(0.0),
+        //     0.0,
+        //     Color::RED,
+        // );
 
         if distance >= radii {
             return None;
@@ -66,11 +59,12 @@ impl CollisionWith<ConvexPolygon> for Circle {
         other: &ConvexPolygon,
         transform: &Transform,
         other_transform: &Transform,
+        lines: &mut ResMut<DebugLines>,
     ) -> Option<CollisionResponse> {
         let other_vertices: Vec<Vec2> = other
             .vertices()
             .iter()
-            .map(|&v| other_transform.translation.truncate() + v)
+            .map(|&v| other_transform.transform_point(v.extend(0.0)).truncate())
             .collect();
 
         let mut normals: Vec<(Vec2, Vec2)> = other_vertices
@@ -104,11 +98,9 @@ impl CollisionWith<ConvexPolygon> for Circle {
                 .normalize(),
         ));
 
-        // if DEBUG_DRAW_COLLISION && DEBUG_DRAW_COLLISION_CIRCLE_POLYGON {
-        //     for (start, normal) in &normals {
-        //         let end = *start + (1.0 + self.radius()) * normal.normalize();
-        //         draw_line(start.x, start.y, end.x, end.y, 0.05, GRAY);
-        //     }
+        // for (start, normal) in &normals {
+        //     let end = *start + (1.0 + self.radius()) * normal.normalize();
+        //     lines.line_colored(start.extend(0.0), end.extend(0.0), 0.0, Color::RED);
         // }
 
         let mut response_depth = f32::MAX;
@@ -128,17 +120,14 @@ impl CollisionWith<ConvexPolygon> for Circle {
 
             let gap = self_min >= other_max || other_min >= self_max;
 
-            // if DEBUG_DRAW_COLLISION && DEBUG_DRAW_COLLISION_CIRCLE_POLYGON {
-            //     let end = *start + normal.normalize();
-            //     draw_line(
-            //         start.x,
-            //         start.y,
-            //         end.x,
-            //         end.y,
-            //         0.05,
-            //         if gap { GREEN } else { RED },
-            //     );
-            // }
+            // let end = *start + normal.normalize();
+            // lines.line_colored(
+            //     start.extend(0.0),
+            //     end.extend(0.0),
+            //     0.0,
+            //     if gap { Color::GREEN } else { Color::RED },
+            // );
+
             if gap {
                 return None;
             }
@@ -170,8 +159,9 @@ impl CollisionWith<Circle> for ConvexPolygon {
         other: &Circle,
         transform: &Transform,
         other_transform: &Transform,
+        lines: &mut ResMut<DebugLines>,
     ) -> Option<CollisionResponse> {
-        let mut collision_response = other.collides(self, other_transform, transform);
+        let mut collision_response = other.collides(self, other_transform, transform, lines);
         if let Some(mut response) = collision_response {
             response.normal *= -1.0;
             collision_response = Some(response);
@@ -186,16 +176,17 @@ impl CollisionWith<ConvexPolygon> for ConvexPolygon {
         other: &ConvexPolygon,
         transform: &Transform,
         other_transform: &Transform,
+        lines: &mut ResMut<DebugLines>,
     ) -> Option<CollisionResponse> {
         let self_vertices: Vec<Vec2> = self
             .vertices()
             .iter()
-            .map(|&v| transform.translation.truncate() + v)
+            .map(|&v| transform.transform_point(v.extend(0.0)).truncate())
             .collect();
         let other_vertices: Vec<Vec2> = other
             .vertices()
             .iter()
-            .map(|&v| other_transform.translation.truncate() + v)
+            .map(|&v| other_transform.transform_point(v.extend(0.0)).truncate())
             .collect();
 
         let normals: Vec<(Vec2, Vec2)> = self_vertices
@@ -215,11 +206,9 @@ impl CollisionWith<ConvexPolygon> for ConvexPolygon {
             })
             .collect();
 
-        // if DEBUG_DRAW_COLLISION && DEBUG_DRAW_COLLISION_POLYGON_POLYGON {
-        //     for (start, normal) in &normals {
-        //         let end = *start + normal.normalize();
-        //         draw_line(start.x, start.y, end.x, end.y, 0.05, GRAY);
-        //     }
+        // for (start, normal) in &normals {
+        //     let end = *start + normal.normalize();
+        //     lines.line_colored(start.extend(0.0), end.extend(0.0), 0.0, Color::RED);
         // }
 
         let mut response_depth = f32::MAX;
@@ -241,17 +230,14 @@ impl CollisionWith<ConvexPolygon> for ConvexPolygon {
 
             let gap = self_min >= other_max || other_min >= self_max;
 
-            // if DEBUG_DRAW_COLLISION && DEBUG_DRAW_COLLISION_CIRCLE_POLYGON {
-            //     let end = *start + normal.normalize();
-            //     draw_line(
-            //         start.x,
-            //         start.y,
-            //         end.x,
-            //         end.y,
-            //         0.05,
-            //         if gap { GREEN } else { RED },
-            //     );
-            // }
+            // let end = *start + normal.normalize();
+            // lines.line_colored(
+            //     start.extend(0.0),
+            //     end.extend(0.0),
+            //     0.0,
+            //     if gap { Color::GREEN } else { Color::RED },
+            // );
+
             if gap {
                 return None;
             }

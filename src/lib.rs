@@ -52,14 +52,14 @@ fn setup(
     });
 
     const OBJECT_SIZE: f32 = 2.0; // [m]
-    const COLORS: [Color; 34] = [
+    const COLORS: [Color; 33] = [
         Color::ALICE_BLUE,
         Color::ANTIQUE_WHITE,
         Color::AQUAMARINE,
         Color::AZURE,
         Color::BEIGE,
         Color::BISQUE,
-        Color::BLACK,
+        // Color::BLACK,
         Color::BLUE,
         Color::CRIMSON,
         Color::CYAN,
@@ -122,19 +122,22 @@ fn setup(
     }
     objects.remove(0);
 
-    // Circle
+    // Player
     commands
         .spawn((
             MaterialMesh2dBundle {
                 mesh: meshes
-                    .add(shape::Circle::new(OBJECT_SIZE / 2.0).into())
+                    .add(shape::Quad::new(Vec2::new(OBJECT_SIZE, OBJECT_SIZE)).into())
                     .into(),
-                material: materials.add(ColorMaterial::from(Color::PURPLE)),
+                material: materials.add(ColorMaterial::from(Color::ORANGE)),
                 transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
                 ..default()
             },
+            Collider::rect(2.0, 2.0),
+            RigidBody {
+                body_type: RigidBodyType::Dynamic,
+            },
             Player,
-            Collider::circle(1.0),
             Velocity::default(),
         ))
         .insert(Name::new("Player"));
@@ -181,59 +184,63 @@ fn setup(
         }
     }
 
-    // for sides in 3..=6 {
-    //     commands
-    //         .spawn((
-    //             MaterialMesh2dBundle {
-    //                 mesh: meshes
-    //                     .add(shape::RegularPolygon::new(OBJECT_SIZE / 2.0, sides).into())
-    //                     .into(),
-    //                 material: materials.add(ColorMaterial::from(Color::TURQUOISE)),
-    //                 transform: Transform::from_translation(Vec3::new(
-    //                     8.,
-    //                     (sides as f32 - 3.0) * 2.1,
-    //                     0.0,
-    //                 )),
-    //                 ..default()
-    //             },
-    //             Collider::regular_polygon(1.0, sides),
-    //         ))
-    //         .insert(Name::new(format!("Polygon {sides}")));
-    // }
-    //     [0]             [1]
-    // (10,  -2) _____(10.5, -2)
+    for sides in 3..=6 {
+        commands
+            .spawn((
+                MaterialMesh2dBundle {
+                    mesh: meshes
+                        .add(shape::RegularPolygon::new(OBJECT_SIZE / 2.0, sides).into())
+                        .into(),
+                    material: materials.add(ColorMaterial::from(Color::TURQUOISE)),
+                    transform: Transform::from_translation(Vec3::new(
+                        8.,
+                        (sides as f32 - 3.0) * 2.8,
+                        0.0,
+                    )),
+                    ..default()
+                },
+                Collider::regular_polygon(1.0, sides),
+                RigidBody {
+                    body_type: RigidBodyType::Fixed,
+                },
+            ))
+            .insert(Name::new(format!("Polygon {sides}")));
+    }
+
+    //     [0]   _____  [1]
     //          |     \
-    //          |      \ (11, -2.5) [2]
+    //          |      \ [2]
     //          |      /
-    //     [4]  |_____/    [3]
-    // (10, -3)      (10.5, -3)
-    // let arrow_position = Vec2::new(-OBJECT_SIZE / 2.0, OBJECT_SIZE / 2.0);
-    // let vertices = vec![
-    //     Vec2::new(arrow_position.x, arrow_position.y),
-    //     Vec2::new(arrow_position.x + OBJECT_SIZE / 2.0, arrow_position.y),
-    //     Vec2::new(
-    //         arrow_position.x + OBJECT_SIZE,
-    //         arrow_position.y - OBJECT_SIZE / 2.0,
-    //     ),
-    //     Vec2::new(
-    //         arrow_position.x + OBJECT_SIZE / 2.0,
-    //         arrow_position.y - OBJECT_SIZE,
-    //     ),
-    //     Vec2::new(arrow_position.x, arrow_position.y - OBJECT_SIZE),
-    // ];
-    // let shape = shapes::Polygon {
-    //     points: vertices.clone(),
-    //     closed: true,
-    // };
-    //
-    // commands
-    //     .spawn((
-    //         ShapeBundle {
-    //             path: GeometryBuilder::build_as(&shape),
-    //             ..Default::default()
-    //         },
-    //         Fill::color(Color::GOLD),
-    //         Collider::convex_polygon(vertices),
-    //     ))
-    //     .insert(Name::new("Arrow"));
+    //     [4]  |_____/ [3]
+    let vertices = vec![
+        Vec2::new(-OBJECT_SIZE / 2.0, OBJECT_SIZE / 2.0),
+        Vec2::new(0.0, OBJECT_SIZE / 2.0),
+        Vec2::new(OBJECT_SIZE / 2.0, 0.0),
+        Vec2::new(0.0, -OBJECT_SIZE / 2.0),
+        Vec2::new(-OBJECT_SIZE / 2.0, -OBJECT_SIZE / 2.0),
+    ];
+    let shape = shapes::Polygon {
+        points: vertices.clone(),
+        closed: true,
+    };
+
+    // This is not yer working
+    commands
+        .spawn((
+            ShapeBundle {
+                path: GeometryBuilder::build_as(&shape),
+                transform: Transform::from_translation(Vec3::new(
+                    -3.0 * OBJECT_SIZE,
+                    2.0 * OBJECT_SIZE,
+                    0.0,
+                )),
+                ..Default::default()
+            },
+            Fill::color(Color::GOLD),
+            Collider::convex_polygon(vertices),
+            RigidBody {
+                body_type: RigidBodyType::Fixed,
+            },
+        ))
+        .insert(Name::new("Arrow"));
 }
